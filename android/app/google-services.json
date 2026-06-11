@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "849186416537",
+    "project_id": "riseday-dd051",
+    "storage_bucket": "riseday-dd051.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:849186416537:android:d1de3619ad0219447b1508",
+        "android_client_info": {
+          "package_name": "com.studymania.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDHbQpFYXectBo3HlrMYa5-jBFZNKBo5o4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

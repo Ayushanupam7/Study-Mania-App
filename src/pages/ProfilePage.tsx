@@ -1470,7 +1470,7 @@ const ProfilePage: React.FC = () => {
                   {/* Download APK Widget */}
                   <a
                     href="/StudyManiaApp.apk"
-                    download="StudyManiaApp.apk"
+                    download="StudyManiaAppv3.apk"
                     className="flex items-center justify-between p-3 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200/30 dark:border-indigo-850/30 hover:bg-indigo-100/50 dark:hover:bg-indigo-900/30 transition-all cursor-pointer group"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">

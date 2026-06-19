@@ -1,10 +1,10 @@
 // src/pages/ProfilePage.tsx
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "../store/store";
-import { motion, AnimatePresence, useDragControls } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { db } from "../firebase";
-import { collection, doc, addDoc, setDoc, deleteDoc, query, orderBy, onSnapshot, getDoc } from "firebase/firestore";
+import { collection, doc, setDoc, deleteDoc, query, orderBy, onSnapshot, getDoc } from "firebase/firestore";
 import {
   Settings,
   Sparkles,
@@ -25,7 +25,6 @@ import {
   Search,
   MessageSquare,
   X,
-  GripVertical,
   Lock,
   Unlock,
   Code,

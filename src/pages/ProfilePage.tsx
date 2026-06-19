@@ -1,5 +1,6 @@
 // src/pages/ProfilePage.tsx
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useStore } from "../store/store";
 import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import { db } from "../firebase";
@@ -36,6 +37,7 @@ import {
 
 
 const ProfilePage: React.FC = () => {
+  const navigate = useNavigate();
   const user = useStore(state => state.user);
   const updateUser = useStore(state => state.updateUser);
   const todos = useStore(state => state.todos);
@@ -90,11 +92,7 @@ const ProfilePage: React.FC = () => {
   })();
 
   // Direct chat states from global store
-  const activeChatFriend = useStore(state => state.activeChatFriend);
   const setActiveChatFriend = useStore(state => state.setActiveChatFriend);
-  const [chatMessages, setChatMessages] = useState<any[]>([]);
-  const [chatInput, setChatInput] = useState("");
-  const dragControls = useDragControls();
 
   const showToast = (message: string, type: "success" | "info" = "success") => {
     setToast({ message, type });
@@ -552,57 +550,7 @@ const ProfilePage: React.FC = () => {
     setAvatarSeed((user.name || "Scholar").split(" ")[0] || "StudyMania");
   }, [user]);
 
-  // Real-time chat synchronization effect
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    if (!userUid || !activeChatFriend) {
-      setChatMessages([]);
-      return;
-    }
-    const chatRoomId = userUid < activeChatFriend.id ? `${userUid}_${activeChatFriend.id}` : `${activeChatFriend.id}_${userUid}`;
-    const q = query(
-      collection(db, "chats", chatRoomId, "messages"),
-      orderBy("timestamp", "asc")
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const msgs = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setChatMessages(msgs);
-    }, (error) => {
-      console.error("Error loading chat messages:", error);
-    });
-
-    return () => unsubscribe();
-  }, [userUid, activeChatFriend]);
-
-  // Auto scroll to bottom of chat when new messages arrive
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatMessages]);
-
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatInput.trim() || !userUid || !activeChatFriend) return;
-
-    const textToSend = chatInput.trim();
-    setChatInput(""); // Clear immediately for instant feedback
-
-    try {
-      const chatRoomId = userUid < activeChatFriend.id ? `${userUid}_${activeChatFriend.id}` : `${activeChatFriend.id}_${userUid}`;
-      await addDoc(collection(db, "chats", chatRoomId, "messages"), {
-        senderId: userUid,
-        senderName: user.name,
-        text: textToSend,
-        timestamp: Date.now()
-      });
-    } catch (error) {
-      console.error("Error sending message:", error);
-      showToast("Failed to send message.", "info");
-    }
-  };
 
   // Compute Leaderboard based on filter
   const rawLeaderboardList = leaderboardFilter === "global"
@@ -1841,6 +1789,7 @@ const ProfilePage: React.FC = () => {
                               <button
                                 onClick={() => {
                                   setActiveChatFriend(friend);
+                                  navigate("/chats");
                                 }}
                                 className="flex-1 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200/50 dark:border-indigo-900/30 text-indigo-650 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/40"
                               >
@@ -2009,129 +1958,6 @@ const ProfilePage: React.FC = () => {
           </AnimatePresence>
         </div>
       </div>
-
-      {/* Direct Chat Overlay Window */}
-      <AnimatePresence>
-        {activeChatFriend && (
-          <motion.div
-            drag
-            dragControls={dragControls}
-            dragListener={false}
-            dragMomentum={false}
-            dragConstraints={{
-              left: -window.innerWidth + 400,
-              right: 20,
-              top: -window.innerHeight + 500,
-              bottom: 20
-            }}
-            initial={{ opacity: 0, y: 50, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 50, scale: 0.95 }}
-            className="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-[380px] sm:max-w-md h-[480px] z-50 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col overflow-hidden backdrop-blur-md"
-          >
-            {/* Header */}
-            <div className="p-4 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-2 min-w-0">
-                <button
-                  onPointerDown={(e) => dragControls.start(e)}
-                  className="p-1 text-slate-400 hover:text-slate-650 dark:hover:text-slate-350 cursor-move shrink-0 touch-none"
-                  title="Drag to move"
-                >
-                  <GripVertical className="h-4 w-4" />
-                </button>
-                <div className="relative shrink-0">
-                  <img
-                    src={activeChatFriend.avatar}
-                    alt={activeChatFriend.name}
-                    className="w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-800 object-cover bg-white"
-                  />
-                  {activeChatFriend.status === "studying" && (
-                    <span className="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-purple-500 border border-white dark:border-slate-900"></span>
-                    </span>
-                  )}
-                  {activeChatFriend.status === "online" && (
-                    <span className="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5">
-                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 border border-white dark:border-slate-900"></span>
-                    </span>
-                  )}
-                  {activeChatFriend.status === "offline" && (
-                    <span className="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5">
-                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-slate-400 border border-white dark:border-slate-900"></span>
-                    </span>
-                  )}
-                </div>
-                <div className="min-w-0 text-left">
-                  <h4 className="font-extrabold text-sm text-slate-900 dark:text-white truncate">
-                    {activeChatFriend.name}
-                  </h4>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                    {activeChatFriend.status === "studying" ? "Studying" : activeChatFriend.status === "online" ? "Online" : "Offline"} • {activeChatFriend.major}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setActiveChatFriend(null)}
-                className="p-1.5 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 transition-colors cursor-pointer"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Messages Scroll Area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0 bg-slate-50/30 dark:bg-slate-900/10">
-              {chatMessages.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 text-center p-6 space-y-2">
-                  <MessageSquare className="h-8 w-8 stroke-1" />
-                  <p className="text-xs font-medium">No messages yet. Send a spark of motivation to start the conversation!</p>
-                </div>
-              ) : (
-                chatMessages.map((msg) => {
-                  const isMyMsg = msg.senderId === userUid;
-                  const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                  return (
-                    <div
-                      key={msg.id}
-                      className={`flex ${isMyMsg ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div
-                        className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-xs shadow-sm flex flex-col gap-1 ${isMyMsg
-                          ? 'bg-gradient-to-tr from-sky-400 via-blue-500 to-indigo-600 text-white rounded-br-none'
-                          : 'bg-white dark:bg-slate-800 border border-slate-200/50 dark:border-slate-800/80 text-slate-800 dark:text-slate-200 rounded-bl-none'
-                          }`}
-                      >
-                        <p className="leading-relaxed break-words text-left">{msg.text}</p>
-                        <span className={`text-[8px] font-bold self-end ${isMyMsg ? 'text-blue-105' : 'text-slate-400'}`}>
-                          {time}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* Message Input Footer */}
-            <form onSubmit={handleSendMessage} className="p-3 bg-white dark:bg-slate-900 border-t border-slate-250/20 dark:border-slate-800 flex gap-2">
-              <input
-                type="text"
-                placeholder="Type a message..."
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 font-medium text-xs text-slate-850 dark:text-slate-200"
-              />
-              <button
-                type="submit"
-                className="p-2.5 rounded-xl bg-gradient-to-tr from-sky-400 via-blue-500 to-indigo-600 text-white shadow-md hover:opacity-95 flex items-center justify-center cursor-pointer shrink-0"
-              >
-                <Send className="h-3.5 w-3.5" />
-              </button>
-            </form>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Deactivate Account Confirmation Modal */}
       <AnimatePresence>

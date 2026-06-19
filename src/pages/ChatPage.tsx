@@ -977,7 +977,7 @@ export const ChatPage: React.FC = () => {
                         }`}
                     >
                       <Zap className={`h-3.5 w-3.5 ${cheerSent ? "animate-ping" : "animate-pulse"}`} />
-                      <span className="hidden sm:inline">{cheerSent ? "Energy Sent!" : "Cheer Partner"}</span>
+                      <span>{cheerSent ? "Energy Sent!" : "Cheer Partner"}</span>
                     </button>
                   )}
 
@@ -1041,7 +1041,7 @@ export const ChatPage: React.FC = () => {
 
               {/* Chat Messages Log Panel - WhatsApp Style Background doodle/grid */}
               <div
-                className="flex-1 overflow-y-auto px-3 sm:px-6 py-4 space-y-3 relative custom-scrollbar transition-all duration-300"
+                className="flex-1 overflow-y-auto px-6 py-6 space-y-3 relative custom-scrollbar transition-all duration-300"
                 style={getWallpaperStyles()}
               >
                 {chatMessages.length === 0 ? (
@@ -1162,7 +1162,7 @@ export const ChatPage: React.FC = () => {
               </div>
 
               {/* Quick Prompts Chips */}
-              <div className="px-4 py-2 bg-[#f0f2f5]/80 dark:bg-[#111b21]/80 border-t border-[#e9edef] dark:border-[#222e35]/30 flex flex-row flex-nowrap gap-1.5 shrink-0 z-10 select-none overflow-x-auto scrollbar-none whitespace-nowrap">
+              <div className="px-4 py-2 bg-[#f0f2f5]/80 dark:bg-[#111b21]/80 border-t border-[#e9edef] dark:border-[#222e35]/30 flex flex-wrap gap-1.5 shrink-0 z-10 select-none overflow-x-auto scrollbar-none whitespace-nowrap">
                 {QUICK_PROMPTS.map((prompt, idx) => (
                   <button
                     key={idx}

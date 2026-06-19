@@ -36,6 +36,7 @@ const PomodoroPage: React.FC = () => {
   const user = useStore(state => state.user);
   const friends = useStore(state => state.friends);
   const todos = useStore(state => state.todos);
+  const habits = useStore(state => state.habits);
   const updateTodo = useStore(state => state.updateTodo);
   const userUid = useStore(state => state.userUid);
   const checkDailyReset = useStore(state => state.checkDailyReset);
@@ -909,31 +910,142 @@ const PomodoroPage: React.FC = () => {
     return c.isUser || c.id === userUid || friends.some(f => f.id === c.id);
   });
 
-  // Daily Quests
+  // Daily Quests — synced with Dashboard
+  const today = new Date().toISOString().split("T")[0];
+  const completedHabitsToday = habits ? habits.filter((h: any) => !!h.completions?.[today]).length : 0;
+  const completedTodosToday = todos ? todos.filter((t: any) => t.completed).length : 0;
+  const totalHabits = habits ? habits.length : 0;
+
   const quests = [
     {
-      id: "q1",
-      title: "Initiate Session",
-      desc: "Start a focus timer in the arena",
+      id: "q_ignite",
+      icon: "🔥",
+      title: "Ignite the Engine",
+      desc: "Log your first focus minute today",
       xp: "+10 XP",
-      completed: isRunning || todayMinutes > 0,
-      progress: isRunning || todayMinutes > 0 ? "1/1" : "0/1",
+      rarity: "common" as const,
+      current: Math.min(1, todayMinutes),
+      total: 1,
+      completed: todayMinutes >= 1,
+      progress: `${Math.min(1, todayMinutes)}/1`,
+      category: "Focus",
     },
     {
-      id: "q2",
-      title: "Deep Dive",
-      desc: "Focus for 50 minutes total today",
+      id: "q_focus25",
+      icon: "🍅",
+      title: "Pomodoro Master",
+      desc: "Focus for 25 minutes total today",
       xp: "+25 XP",
-      completed: todayMinutes >= 50,
-      progress: `${Math.min(50, todayMinutes)}/50m`,
+      rarity: "common" as const,
+      current: Math.min(25, todayMinutes),
+      total: 25,
+      completed: todayMinutes >= 25,
+      progress: `${Math.min(25, todayMinutes)}/25m`,
+      category: "Focus",
     },
     {
-      id: "q3",
+      id: "q_focus60",
+      icon: "⏰",
+      title: "Deep Worker",
+      desc: "Accumulate 1 hour of focus today",
+      xp: "+50 XP",
+      rarity: "rare" as const,
+      current: Math.min(60, todayMinutes),
+      total: 60,
+      completed: todayMinutes >= 60,
+      progress: `${Math.min(60, todayMinutes)}/60m`,
+      category: "Focus",
+    },
+    {
+      id: "q_focus120",
+      icon: "🧠",
+      title: "Flow State",
+      desc: "Reach 2 hours of deep focus today",
+      xp: "+100 XP",
+      rarity: "epic" as const,
+      current: Math.min(120, todayMinutes),
+      total: 120,
+      completed: todayMinutes >= 120,
+      progress: `${Math.min(120, todayMinutes)}/120m`,
+      category: "Focus",
+    },
+    {
+      id: "q_session1",
+      icon: "⚡",
+      title: "First Session",
+      desc: "Complete 1 full Pomodoro session",
+      xp: "+15 XP",
+      rarity: "common" as const,
+      current: Math.min(1, sessionCount),
+      total: 1,
+      completed: sessionCount >= 1,
+      progress: `${Math.min(1, sessionCount)}/1 sessions`,
+      category: "Sessions",
+    },
+    {
+      id: "q_session3",
+      icon: "🏆",
       title: "Triple Crown",
-      desc: "Complete 3 full focus sessions",
+      desc: "Complete 3 Pomodoro sessions",
       xp: "+40 XP",
+      rarity: "rare" as const,
+      current: Math.min(3, sessionCount),
+      total: 3,
       completed: sessionCount >= 3,
       progress: `${Math.min(3, sessionCount)}/3 sessions`,
+      category: "Sessions",
+    },
+    {
+      id: "q_habit1",
+      icon: "🌱",
+      title: "Habit Starter",
+      desc: "Complete at least 1 habit today",
+      xp: "+20 XP",
+      rarity: "common" as const,
+      current: Math.min(1, completedHabitsToday),
+      total: 1,
+      completed: completedHabitsToday >= 1,
+      progress: `${Math.min(1, completedHabitsToday)}/1`,
+      category: "Habits",
+    },
+    {
+      id: "q_habitall",
+      icon: "💎",
+      title: "Perfect Day",
+      desc: "Complete ALL your habits today",
+      xp: "+60 XP",
+      rarity: "epic" as const,
+      current: completedHabitsToday,
+      total: Math.max(1, totalHabits),
+      completed: totalHabits > 0 && completedHabitsToday >= totalHabits,
+      progress: `${completedHabitsToday}/${Math.max(1, totalHabits)}`,
+      category: "Habits",
+    },
+    {
+      id: "q_task3",
+      icon: "✅",
+      title: "Task Slayer",
+      desc: "Mark 3 tasks as completed",
+      xp: "+30 XP",
+      rarity: "rare" as const,
+      current: Math.min(3, completedTodosToday),
+      total: 3,
+      completed: completedTodosToday >= 3,
+      progress: `${Math.min(3, completedTodosToday)}/3 tasks`,
+      category: "Tasks",
+    },
+    {
+      id: "q_legendary",
+      icon: "👑",
+      title: "Legendary Scholar",
+      desc: "Focus 2h + 3 sessions + all habits",
+      xp: "+200 XP",
+      rarity: "legendary" as const,
+      current: [todayMinutes >= 120, sessionCount >= 3, totalHabits > 0 && completedHabitsToday >= totalHabits].filter(Boolean).length,
+      total: 3,
+      completed: todayMinutes >= 120 && sessionCount >= 3 && totalHabits > 0 && completedHabitsToday >= totalHabits,
+      progress: `${[todayMinutes >= 120, sessionCount >= 3, totalHabits > 0 && completedHabitsToday >= totalHabits].filter(Boolean).length}/3`,
+      category: "Ultimate",
     },
   ];
 

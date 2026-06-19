@@ -97,43 +97,40 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                   {/* Left: icon + name + type */}
                   <div className="flex items-center gap-2 min-w-0">
                     <div
-                      className={`p-1.5 rounded-lg shrink-0 ${
-                        isPomodoro
+                      className={`p-1.5 rounded-lg shrink-0 ${isPomodoro
                           ? "bg-emerald-500/10 text-emerald-500"
                           : "bg-indigo-500/10 text-indigo-500"
-                      }`}
+                        }`}
                     >
                       <Clock className="h-3.5 w-3.5" />
                     </div>
                     <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-extrabold text-xs text-slate-800 dark:text-white leading-none">
+                      <p className="text-xs font-extrabold text-slate-800 dark:text-white leading-none">
+                        {dateLabel}
+                      </p>
+                      <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                        <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 leading-none">
                           Session #{displayNum}
                         </span>
                         <span
-                          className={`hidden xs:inline-flex px-1.5 py-0.5 rounded-md text-[9px] font-black leading-none ${
-                            isPomodoro
+                          className={`hidden xs:inline-flex px-1.5 py-0.5 rounded-md text-[9px] font-black leading-none ${isPomodoro
                               ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                               : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
-                          }`}
+                            }`}
                         >
                           {isPomodoro ? "🍅 Pomodoro" : "⏱ Stopwatch"}
                         </span>
                       </div>
-                      <p className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold mt-0.5 leading-none">
-                        {dateLabel}
-                      </p>
                     </div>
                   </div>
 
                   {/* Right: duration pill + delete */}
                   <div className="flex items-center gap-1.5 shrink-0">
                     <span
-                      className={`px-2 py-0.5 rounded-lg text-[10px] font-black ${
-                        isPomodoro
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-black ${isPomodoro
                           ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                           : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
-                      }`}
+                        }`}
                     >
                       {duration}m
                     </span>

@@ -10,6 +10,7 @@ import PomodoroPage from "./pages/PomodoroPage.tsx";
 import AnalyticsPage from "./pages/AnalyticsPage.tsx";
 import NotesPage from "./pages/NotesPage.tsx";
 import ProfilePage from "./pages/ProfilePage.tsx";
+import ChatPage from "./pages/ChatPage.tsx";
 import LoginPage from "./pages/LoginPage.tsx";
 import { useStore } from "./store/store";
 import { auth } from "./firebase";
@@ -74,6 +75,7 @@ const App: React.FC = () => {
             <Route path="/pomodoro" element={<PomodoroPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/notes" element={<NotesPage />} />
+            <Route path="/chats" element={<ChatPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

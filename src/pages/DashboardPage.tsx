@@ -14,7 +14,14 @@ import {
   CheckCircle2,
   Clock,
   Trophy,
-  Activity
+  Activity,
+  Zap,
+  Star,
+  Target,
+  BookOpen,
+  Sparkles,
+  Shield,
+  Gem
 } from "lucide-react";
 import { db } from "../firebase";
 import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
@@ -26,6 +33,8 @@ const DashboardPage: React.FC = () => {
   const countdowns = useStore(state => state.countdowns);
   const toggleHabitDay = useStore(state => state.toggleHabitDay);
   const todayMinutes = useStore(state => state.todayMinutes);
+  const sessionCount = useStore(state => state.sessionCount);
+  const totalStudyTime = useStore(state => state.totalStudyTime) || 0;
   const updateTodo = useStore(state => state.updateTodo);
   const checkDailyReset = useStore(state => state.checkDailyReset);
   const today = new Date().toISOString().split("T")[0];
@@ -570,6 +579,292 @@ const DashboardPage: React.FC = () => {
           </div>
         </div>
       </motion.div>
+      {/* ===== DAILY QUESTS SECTION ===== */}
+      <motion.div variants={itemVariants} className="space-y-4">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg sm:text-xl font-extrabold flex items-center gap-2 text-slate-800 dark:text-slate-200">
+            <Sparkles className="h-5 w-5 text-violet-500 animate-pulse" />
+            <span>Daily Quests</span>
+          </h3>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
+              <Zap className="h-3.5 w-3.5 text-amber-500" />
+              <span className="text-[11px] font-black text-amber-600 dark:text-amber-400">
+                {[
+                  todayMinutes >= 1,
+                  todayMinutes >= 25,
+                  todayMinutes >= 60,
+                  todayMinutes >= 120,
+                  sessionCount >= 1,
+                  sessionCount >= 3,
+                  habits.filter(h => !!h.completions[today]).length >= 1,
+                  habits.filter(h => !!h.completions[today]).length >= habits.length && habits.length > 0,
+                ].filter(Boolean).length * [10, 25, 50, 100, 15, 40, 20, 60][0]} XP today
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Quest Grid */}
+        {(() => {
+          const completedHabitsToday = habits.filter(h => !!h.completions[today]).length;
+          const completedTodosToday = todos.filter(t => t.completed).length;
+
+          const quests = [
+            {
+              id: "q_ignite",
+              icon: "🔥",
+              title: "Ignite the Engine",
+              desc: "Log your first focus minute today",
+              xp: 10,
+              rarity: "common" as const,
+              current: Math.min(1, todayMinutes),
+              total: 1,
+              completed: todayMinutes >= 1,
+              category: "Focus",
+              link: "/pomodoro",
+            },
+            {
+              id: "q_focus25",
+              icon: "🍅",
+              title: "Pomodoro Master",
+              desc: "Focus for 25 minutes total today",
+              xp: 25,
+              rarity: "common" as const,
+              current: Math.min(25, todayMinutes),
+              total: 25,
+              completed: todayMinutes >= 25,
+              category: "Focus",
+              link: "/pomodoro",
+            },
+            {
+              id: "q_focus60",
+              icon: "⏰",
+              title: "Deep Worker",
+              desc: "Accumulate 1 hour of focus today",
+              xp: 50,
+              rarity: "rare" as const,
+              current: Math.min(60, todayMinutes),
+              total: 60,
+              completed: todayMinutes >= 60,
+              category: "Focus",
+              link: "/pomodoro",
+            },
+            {
+              id: "q_focus120",
+              icon: "🧠",
+              title: "Flow State",
+              desc: "Reach 2 hours of deep focus today",
+              xp: 100,
+              rarity: "epic" as const,
+              current: Math.min(120, todayMinutes),
+              total: 120,
+              completed: todayMinutes >= 120,
+              category: "Focus",
+              link: "/pomodoro",
+            },
+            {
+              id: "q_session1",
+              icon: "⚡",
+              title: "First Session",
+              desc: "Complete 1 full Pomodoro session",
+              xp: 15,
+              rarity: "common" as const,
+              current: Math.min(1, sessionCount),
+              total: 1,
+              completed: sessionCount >= 1,
+              category: "Sessions",
+              link: "/pomodoro",
+            },
+            {
+              id: "q_session3",
+              icon: "🏆",
+              title: "Triple Crown",
+              desc: "Complete 3 Pomodoro sessions",
+              xp: 40,
+              rarity: "rare" as const,
+              current: Math.min(3, sessionCount),
+              total: 3,
+              completed: sessionCount >= 3,
+              category: "Sessions",
+              link: "/pomodoro",
+            },
+            {
+              id: "q_habit1",
+              icon: "🌱",
+              title: "Habit Starter",
+              desc: "Complete at least 1 habit today",
+              xp: 20,
+              rarity: "common" as const,
+              current: Math.min(1, completedHabitsToday),
+              total: 1,
+              completed: completedHabitsToday >= 1,
+              category: "Habits",
+              link: "/habits",
+            },
+            {
+              id: "q_habitall",
+              icon: "💎",
+              title: "Perfect Day",
+              desc: "Complete ALL your habits today",
+              xp: 60,
+              rarity: habits.length > 0 ? "epic" as const : "common" as const,
+              current: completedHabitsToday,
+              total: Math.max(1, habits.length),
+              completed: habits.length > 0 && completedHabitsToday >= habits.length,
+              category: "Habits",
+              link: "/habits",
+            },
+            {
+              id: "q_task3",
+              icon: "✅",
+              title: "Task Slayer",
+              desc: "Mark 3 tasks as completed",
+              xp: 30,
+              rarity: "rare" as const,
+              current: Math.min(3, completedTodosToday),
+              total: 3,
+              completed: completedTodosToday >= 3,
+              category: "Tasks",
+              link: "/todos",
+            },
+            {
+              id: "q_legendary",
+              icon: "👑",
+              title: "Legendary Scholar",
+              desc: "Focus 2h + 3 sessions + all habits",
+              xp: 200,
+              rarity: "legendary" as const,
+              current: [todayMinutes >= 120, sessionCount >= 3, habits.length > 0 && completedHabitsToday >= habits.length].filter(Boolean).length,
+              total: 3,
+              completed: todayMinutes >= 120 && sessionCount >= 3 && habits.length > 0 && completedHabitsToday >= habits.length,
+              category: "Ultimate",
+              link: "/pomodoro",
+            },
+          ];
+
+          const rarityConfig = {
+            common: { label: "Common", bg: "bg-slate-100 dark:bg-slate-800", border: "border-slate-200 dark:border-slate-700", badge: "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300", bar: "from-slate-400 to-slate-500", glow: "" },
+            rare: { label: "Rare", bg: "bg-sky-500/5 dark:bg-sky-500/5", border: "border-sky-400/30 dark:border-sky-500/20", badge: "bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/20", bar: "from-sky-400 to-blue-500", glow: "shadow-sky-500/10" },
+            epic: { label: "Epic", bg: "bg-violet-500/5 dark:bg-violet-500/5", border: "border-violet-400/30 dark:border-violet-500/20", badge: "bg-violet-500/15 text-violet-600 dark:text-violet-400 border border-violet-500/20", bar: "from-violet-400 to-purple-600", glow: "shadow-violet-500/15" },
+            legendary: { label: "Legendary", bg: "bg-amber-500/5 dark:bg-amber-500/5", border: "border-amber-400/40 dark:border-amber-500/25", badge: "bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30", bar: "from-amber-400 to-orange-500", glow: "shadow-amber-500/20" },
+          };
+
+          const totalXpEarned = quests.filter(q => q.completed).reduce((sum, q) => sum + q.xp, 0);
+          const totalXpAvail = quests.reduce((sum, q) => sum + q.xp, 0);
+
+          return (
+            <>
+              {/* XP summary bar */}
+              <div className="glass-card p-4 rounded-2xl flex items-center gap-4">
+                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 shrink-0">
+                  <Zap className="h-5 w-5 text-amber-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-extrabold text-slate-700 dark:text-slate-300">
+                      Today's Quest XP
+                    </span>
+                    <span className="text-xs font-black text-amber-600 dark:text-amber-400">
+                      {totalXpEarned} / {totalXpAvail} XP
+                    </span>
+                  </div>
+                  <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-amber-400 via-orange-400 to-yellow-400 transition-all duration-700 shadow-sm"
+                      style={{ width: `${totalXpAvail > 0 ? Math.round((totalXpEarned / totalXpAvail) * 100) : 0}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-semibold">
+                    {quests.filter(q => q.completed).length} / {quests.length} quests completed today
+                  </p>
+                </div>
+              </div>
+
+              {/* Quest cards — infinite auto-scroll marquee */}
+              <style>{`
+                @keyframes quest-scroll {
+                  0%   { transform: translateX(0); }
+                  100% { transform: translateX(-50%); }
+                }
+                .quest-track {
+                  animation: quest-scroll 40s linear infinite;
+                }
+                .quest-track:hover {
+                  animation-play-state: paused;
+                }
+              `}</style>
+
+              <div className="overflow-hidden relative w-full">
+                {/* Fade edges */}
+                <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white dark:from-slate-950 to-transparent z-10 pointer-events-none" />
+                <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white dark:from-slate-950 to-transparent z-10 pointer-events-none" />
+
+                <div className="quest-track flex gap-3 pb-1" style={{ width: "max-content" }}>
+                  {/* Render twice for seamless loop */}
+                  {[...quests, ...quests].map((quest, i) => {
+                    const rc = rarityConfig[quest.rarity];
+                    const pct = quest.total > 0 ? Math.min(100, Math.round((quest.current / quest.total) * 100)) : 0;
+
+                    return (
+                      <Link
+                        key={`${quest.id}-${i}`}
+                        to={quest.link}
+                        className={`relative flex flex-col gap-2 p-3.5 rounded-2xl border transition-all duration-200 shrink-0 w-44
+                          ${rc.bg} ${rc.border}
+                          ${quest.completed ? "opacity-70" : "hover:scale-[1.03] hover:shadow-md " + rc.glow}
+                        `}
+                      >
+                        {/* Completed checkmark */}
+                        {quest.completed && (
+                          <div className="absolute top-2 right-2">
+                            <div className="h-4 w-4 rounded-full bg-emerald-500 flex items-center justify-center shadow-sm">
+                              <CheckCircle2 className="h-2.5 w-2.5 text-white" />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Emoji */}
+                        <span className="text-2xl select-none leading-none">{quest.icon}</span>
+
+                        {/* Rarity + XP badges */}
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <span className={`px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wide ${rc.badge}`}>
+                            {rc.label}
+                          </span>
+                          <span className="text-[8px] font-black text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-md">
+                            +{quest.xp} XP
+                          </span>
+                        </div>
+
+                        {/* Title */}
+                        <p className="font-extrabold text-[11px] text-slate-800 dark:text-white leading-tight">
+                          {quest.title}
+                        </p>
+
+                        {/* Progress */}
+                        <div className="mt-auto space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">{quest.category}</span>
+                            <span className="text-[8px] font-black text-slate-500 dark:text-slate-400">{quest.current}/{quest.total}</span>
+                          </div>
+                          <div className="h-1 rounded-full bg-slate-200/60 dark:bg-slate-700/60 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full bg-gradient-to-r ${quest.completed ? "from-emerald-400 to-emerald-500" : rc.bar} transition-all duration-700`}
+                              style={{ width: `${quest.completed ? 100 : pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          );
+        })()}
+      </motion.div>
 
       {/* Study Arena & Live Feed Section */}
       <motion.div
@@ -592,62 +887,130 @@ const DashboardPage: React.FC = () => {
             </Link>
           </div>
 
-          <div className="glass-card p-4 sm:p-5 rounded-2xl space-y-3 max-h-[350px] overflow-y-auto pr-1">
+          <div className="glass-card rounded-2xl overflow-hidden">
+            {/* Leaderboard header bar */}
+            <div className="bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 dark:from-indigo-500/5 dark:via-purple-500/5 dark:to-pink-500/5 border-b border-slate-200/50 dark:border-slate-800/50 px-4 py-2.5 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500 dark:text-slate-400">Live Leaderboard</span>
+              </div>
+              <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                Today's Focus
+              </span>
+            </div>
+
             {competitors.length === 0 ? (
-              <div className="text-center py-8 text-slate-400 dark:text-slate-500 text-xs">
-                No competitors active in the arena.
+              <div className="text-center py-10 text-slate-400 dark:text-slate-500 text-xs space-y-2">
+                <Trophy className="h-8 w-8 mx-auto text-slate-300 dark:text-slate-700" />
+                <p>No competitors active in the arena yet.</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800/60 max-h-[340px] overflow-y-auto">
                 {competitors.slice(0, 5).map((comp, idx) => {
                   const rank = idx + 1;
                   const displayMins = Math.floor(comp.seconds / 60);
+                  const topMins = Math.floor(competitors[0].seconds / 60) || 1;
+                  const barPct = Math.min(100, Math.round((displayMins / topMins) * 100));
+
+                  const rankStyles: Record<number, { bg: string; text: string; label: string }> = {
+                    1: { bg: "from-amber-400 to-yellow-500", text: "text-white", label: "🥇" },
+                    2: { bg: "from-slate-400 to-slate-500", text: "text-white", label: "🥈" },
+                    3: { bg: "from-orange-400 to-amber-500", text: "text-white", label: "🥉" },
+                  };
+                  const rs = rankStyles[rank];
+
+                  const barColor =
+                    rank === 1 ? "from-amber-400 to-yellow-400" :
+                      rank === 2 ? "from-slate-400 to-slate-500" :
+                        rank === 3 ? "from-orange-400 to-amber-400" :
+                          comp.isUser ? "from-emerald-400 to-teal-500" :
+                            "from-indigo-400 to-purple-500";
+
                   return (
                     <div
                       key={comp.id}
-                      className={`flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-800/40 ${comp.isUser
-                        ? "bg-emerald-500/5 dark:bg-emerald-500/10 border-l-4 border-l-emerald-500 border-emerald-500/25 shadow-sm"
-                        : "bg-white/40 dark:bg-slate-900/40 border-slate-200/50 dark:border-slate-800/50"
+                      className={`flex items-center gap-3 px-4 py-3 transition-colors ${comp.isUser
+                        ? "bg-emerald-500/5 dark:bg-emerald-500/8"
+                        : "hover:bg-slate-50/60 dark:hover:bg-slate-800/30"
                         }`}
                     >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className={`w-5.5 h-5.5 rounded-lg flex items-center justify-center font-black text-[10px] shrink-0 border ${rank === 1 ? "bg-amber-400 text-white border-amber-300" :
-                          rank === 2 ? "bg-slate-300 text-white border-slate-300" :
-                            rank === 3 ? "bg-orange-400 text-white border-orange-300" :
-                              "bg-slate-100 dark:bg-slate-800/50 border-slate-200/50 dark:border-slate-800/50 text-slate-500 dark:text-slate-400"
-                          }`}>
-                          {rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : rank}
-                        </span>
-                        <div className="relative shrink-0">
-                          <img
-                            src={comp.avatar || "https://api.dicebear.com/7.x/bottts/svg?seed=Scholar"}
-                            alt={comp.name || "Scholar"}
-                            className={`w-7.5 h-7.5 rounded-lg object-cover bg-white dark:bg-slate-950 p-0.5 border ${comp.isUser ? "border-emerald-500/60 ring-2 ring-emerald-500/15" : "border-slate-200 dark:border-slate-800"
-                              }`}
-                          />
-                          <span className={`absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border border-white dark:border-slate-900 ${comp.status === "studying" ? "bg-purple-500" :
-                            comp.status === "online" ? "bg-emerald-500" : "bg-slate-400"
-                            }`} />
-                        </div>
-                        <div className="min-w-0">
-                          <span className="font-bold text-xs text-slate-700 dark:text-slate-300 block truncate">
+                      {/* Rank badge */}
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-black text-[11px] shrink-0 ${rs ? `bg-gradient-to-br ${rs.bg} shadow-sm` : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+                        }`}>
+                        {rs ? rs.label : <span className="text-[10px]">{rank}</span>}
+                      </div>
+
+                      {/* Avatar + status dot */}
+                      <div className="relative shrink-0">
+                        <img
+                          src={comp.avatar || "https://api.dicebear.com/7.x/bottts/svg?seed=Scholar"}
+                          alt={comp.name}
+                          className={`w-8 h-8 rounded-xl object-cover bg-white dark:bg-slate-900 border-2 ${comp.isUser
+                            ? "border-emerald-400 ring-2 ring-emerald-400/20"
+                            : "border-slate-200 dark:border-slate-700"
+                            }`}
+                        />
+                        <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-slate-900 ${comp.status === "studying" ? "bg-purple-500" :
+                          comp.status === "online" ? "bg-emerald-400" : "bg-slate-400"
+                          }`} />
+                      </div>
+
+                      {/* Name + activity + bar */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className="font-bold text-xs text-slate-800 dark:text-slate-200 truncate">
                             {(comp.name || "Scholar").replace(" (You)", "")}
                           </span>
-                          {comp.status === "studying" && comp.activity && (
-                            <span className="text-[9px] font-semibold text-purple-600 dark:text-purple-400 block truncate max-w-[150px] sm:max-w-[200px]">
-                              Focusing: {comp.activity}
+                          {comp.isUser && (
+                            <span className="shrink-0 px-1.5 py-0.5 rounded-md text-[8px] font-black bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                              YOU
+                            </span>
+                          )}
+                          {comp.status === "studying" && (
+                            <span className="shrink-0 px-1.5 py-0.5 rounded-md text-[8px] font-black bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 flex items-center gap-0.5">
+                              <span className="h-1 w-1 rounded-full bg-purple-500 animate-pulse inline-block" />
+                              Live
                             </span>
                           )}
                         </div>
+                        {comp.status === "studying" && comp.activity && (
+                          <p className="text-[9px] text-purple-600 dark:text-purple-400 font-semibold truncate mb-1">
+                            📚 {comp.activity}
+                          </p>
+                        )}
+                        {/* Progress bar */}
+                        <div className="h-1 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full bg-gradient-to-r ${barColor} transition-all duration-700`}
+                            style={{ width: `${barPct}%` }}
+                          />
+                        </div>
                       </div>
-                      <span className="text-[10px] font-mono font-black text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200/50 dark:border-slate-800/30 px-2 py-0.5 rounded-lg shrink-0">
-                        {displayMins}m
-                      </span>
+
+                      {/* Minutes */}
+                      <div className="text-right shrink-0">
+                        <div className="font-black text-sm text-slate-700 dark:text-slate-200 font-mono leading-none">
+                          {displayMins}
+                        </div>
+                        <div className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 leading-none mt-0.5">
+                          min
+                        </div>
+                      </div>
                     </div>
                   );
                 })}
               </div>
             )}
+
+            {/* Footer CTA */}
+            <div className="border-t border-slate-100 dark:border-slate-800/50 px-4 py-2.5 bg-slate-50/50 dark:bg-slate-900/30 flex items-center justify-between">
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">
+                {competitors.filter(c => c.status === "studying").length} studying now
+              </span>
+              <Link to="/pomodoro" className="text-[10px] font-bold text-indigo-500 hover:text-indigo-600 flex items-center gap-0.5 hover:underline">
+                Full leaderboard <ChevronRight className="h-3 w-3" />
+              </Link>
+            </div>
           </div>
         </div>
 
@@ -705,6 +1068,8 @@ const DashboardPage: React.FC = () => {
           </div>
         </div>
       </motion.div>
+
+
 
       {/* Professional Dashboard Footer */}
       <footer className="pt-6 pb-6 border-t border-slate-200/30 dark:border-slate-800/40 mt-2 text-center sm:text-left">

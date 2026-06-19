@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useStore } from "../store/store";
 import { motion, AnimatePresence } from "framer-motion";
 import { db } from "../firebase";
@@ -32,6 +32,7 @@ const navItems = [
   { name: "Habits", path: "/habits", icon: Flame },
   { name: "Countdowns", path: "/countdowns", icon: Calendar },
   { name: "Pomodoro", path: "/pomodoro", icon: Timer },
+  { name: "Chats", path: "/chats", icon: MessageSquare },
   { name: "Analytics", path: "/analytics", icon: BarChart2 },
   { name: "Notes", path: "/notes", icon: BookOpen },
 ];
@@ -44,6 +45,207 @@ const bottomNavItems = [
   { name: "Profile", path: "/profile", icon: UserCircle2 },
 ];
 
+interface SidebarContentProps {
+  forceExpanded?: boolean;
+  desktopExpanded: boolean;
+  setMobileMenuOpen: (open: boolean) => void;
+  user: any;
+  xpNeeded: number;
+  xpPercent: number;
+  toggleTheme: () => void;
+  darkMode: boolean;
+  logout: () => void;
+}
+
+const SidebarContent: React.FC<SidebarContentProps> = ({
+  forceExpanded = false,
+  desktopExpanded,
+  setMobileMenuOpen,
+  user,
+  xpNeeded,
+  xpPercent,
+  toggleTheme,
+  darkMode,
+  logout
+}) => {
+  const isExpanded = forceExpanded || desktopExpanded;
+  return (
+    <div className="flex flex-col h-full">
+      {/* Mobile Drawer Sidebar Brand Header */}
+      {forceExpanded && (
+        <Link
+          to="/profile"
+          onClick={() => setMobileMenuOpen(false)}
+          className="flex items-center py-4 mb-6 w-full justify-start ml-0.5 animate-fade-in hover:opacity-85 transition-opacity cursor-pointer"
+        >
+          <div className="w-11 h-11 rounded-xl gradient-primary text-white shadow-lg shadow-blue-500/30 shrink-0 flex items-center justify-center font-black text-xl">
+            S
+          </div>
+          <motion.div
+            animate={{
+              opacity: isExpanded ? 1 : 0,
+              width: isExpanded ? "auto" : 0,
+              marginLeft: isExpanded ? 12 : 0
+            }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className="overflow-hidden whitespace-nowrap flex flex-col justify-center"
+          >
+            <h1 className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300">
+              Study Mania
+            </h1>
+            <span className="text-xs font-semibold text-sky-500 uppercase tracking-widest block mt-0.5">
+              v1.1 Premium
+            </span>
+          </motion.div>
+        </Link>
+      )}
+
+      {/* Gamified User Card */}
+      <motion.div
+        layout
+        className={`mb-6 transition-all duration-300 flex flex-col ${isExpanded
+          ? "p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/50 w-full"
+          : "p-0 bg-transparent border-transparent w-full items-center justify-center"
+          }`}
+      >
+        <Link
+          to="/profile"
+          onClick={() => setMobileMenuOpen(false)}
+          className={`flex items-center w-full hover:opacity-85 transition-opacity cursor-pointer ${isExpanded ? "justify-start" : "justify-center"}`}
+        >
+          <motion.img
+            layout
+            src={user.avatar}
+            alt="Avatar"
+            className="w-10 h-10 rounded-xl bg-sky-100 dark:bg-sky-950 p-1 object-cover border border-sky-200 dark:border-sky-800 shrink-0"
+          />
+          <motion.div
+            animate={{
+              opacity: isExpanded ? 1 : 0,
+              width: isExpanded ? "auto" : 0,
+              marginLeft: isExpanded ? 12 : 0
+            }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className="overflow-hidden whitespace-nowrap flex flex-col justify-center flex-1"
+          >
+            <h3 className="font-semibold text-sm truncate">{user.name}</h3>
+            <span className="text-xs text-gray-500 dark:text-gray-400">Level {user.level} Scholar</span>
+          </motion.div>
+        </Link>
+        {/* XP Bar */}
+        <motion.div
+          animate={{
+            height: isExpanded ? "auto" : 0,
+            opacity: isExpanded ? 1 : 0,
+            marginTop: isExpanded ? 12 : 0
+          }}
+          transition={{ duration: 0.2, ease: "easeInOut" }}
+          className="w-full overflow-hidden"
+        >
+          <div className="flex justify-between text-xs font-bold mb-1 text-gray-500">
+            <span>XP: {user.xp}/{xpNeeded}</span>
+            <span>{xpPercent}%</span>
+          </div>
+          <div className="h-2 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${xpPercent}%` }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+              className="h-full gradient-primary rounded-full"
+            />
+          </div>
+        </motion.div>
+      </motion.div>
+
+      {/* Navigation */}
+      <ul className={`flex-1 space-y-1.5 ${isExpanded ? "pr-1 overflow-y-auto" : "overflow-y-hidden"}`}>
+        {navItems.map(item => {
+          const Icon = item.icon;
+          return (
+            <li key={item.path}>
+              <NavLink
+                to={item.path}
+                end
+                onClick={() => setMobileMenuOpen(false)}
+                className={({ isActive }) =>
+                  `flex items-center rounded-xl transition-all duration-200 group text-sm font-medium ${isExpanded
+                    ? "w-full px-3.5 py-3 justify-start"
+                    : "w-11 h-11 justify-center mx-auto"
+                  } ${isActive
+                    ? "gradient-primary text-white shadow-md shadow-blue-500/15"
+                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800/50 hover:text-gray-900 dark:hover:text-white"
+                  }`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <Icon className={`h-5 w-5 transition-transform duration-200 group-hover:scale-110 shrink-0 ${isActive ? "text-white" : "text-gray-400 group-hover:text-sky-500"}`} />
+                    <motion.span
+                      animate={{
+                        opacity: isExpanded ? 1 : 0,
+                        width: isExpanded ? "auto" : 0,
+                        marginLeft: isExpanded ? 12 : 0
+                      }}
+                      transition={{ duration: 0.2, ease: "easeInOut" }}
+                      className="overflow-hidden whitespace-nowrap"
+                    >
+                      {item.name}
+                    </motion.span>
+                  </>
+                )}
+              </NavLink>
+            </li>
+          );
+        })}
+      </ul>
+
+      {/* Footer Controls */}
+      <div className="pt-4 border-t border-slate-100 dark:border-slate-800/80 space-y-2">
+        {isExpanded && (
+          <button
+            onClick={toggleTheme}
+            className="flex items-center rounded-xl transition-all duration-200 text-m font-medium justify-between w-full px-3.5 py-3 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/50 text-gray-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            {darkMode ? <Sun className="h-5 w-5 text-amber-500 shrink-0" /> : <Moon className="h-5 w-5 text-indigo-500 shrink-0" />}
+            <motion.span
+              animate={{
+                opacity: isExpanded ? 1 : 0,
+                width: isExpanded ? "auto" : 0,
+                marginLeft: isExpanded ? 8 : 0
+              }}
+              transition={{ duration: 0.2, ease: "easeInOut" }}
+              className="overflow-hidden whitespace-nowrap"
+            >
+              {darkMode ? "Light Mode" : "Dark Mode"}
+            </motion.span>
+          </button>
+        )}
+
+        <button
+          onClick={logout}
+          className={`flex items-center rounded-xl transition-all duration-200 text-m font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 ${isExpanded
+            ? "w-full px-3.5 py-3 justify-start gap-3"
+            : "w-11 h-11 justify-center mx-auto"
+            }`}
+          title="Sign Out"
+        >
+          <LogOut className="h-5 w-5 shrink-0" />
+          <motion.span
+            animate={{
+              opacity: isExpanded ? 1 : 0,
+              width: isExpanded ? "auto" : 0,
+            }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className="overflow-hidden whitespace-nowrap"
+          >
+            Sign Out
+          </motion.span>
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const MainLayout: React.FC = () => {
   const darkMode = useStore(state => state.darkMode);
   const toggleTheme = useStore(state => state.toggleTheme);
@@ -52,6 +254,9 @@ const MainLayout: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [desktopExpanded, setDesktopExpanded] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+
+  const location = useLocation();
+  const isChatPage = location.pathname === "/chats";
 
   const userUid = useStore(state => state.userUid);
   const friends = useStore(state => state.friends);
@@ -275,200 +480,21 @@ const MainLayout: React.FC = () => {
   const renderNotificationIcon = (iconType: string) => {
     switch (iconType) {
       case "user_plus":
-        return <UserPlus className="h-4 w-4 text-indigo-500" />;
+        return <UserPlus className="h-3.5 w-3.5 text-indigo-500" />;
       case "sparkles":
-        return <Sparkles className="h-4 w-4 text-amber-500" />;
+        return <Sparkles className="h-3.5 w-3.5 text-amber-500" />;
       case "flame":
-        return <Flame className="h-4 w-4 text-orange-500" />;
+        return <Flame className="h-3.5 w-3.5 text-orange-500" />;
       case "message":
-        return <MessageSquare className="h-4 w-4 text-emerald-500" />;
+        return <MessageSquare className="h-3.5 w-3.5 text-emerald-500" />;
       default:
-        return <Bell className="h-4 w-4 text-slate-500" />;
+        return <Bell className="h-3.5 w-3.5 text-slate-500" />;
     }
   };
 
   const xpNeeded = user.level * 200;
   const xpPercent = Math.min(100, Math.floor((user.xp / xpNeeded) * 100));
 
-  const SidebarContent = ({ forceExpanded = false }: { forceExpanded?: boolean }) => {
-    const isExpanded = forceExpanded || desktopExpanded;
-    return (
-      <div className="flex flex-col h-full">
-        {/* Mobile Drawer Sidebar Brand Header */}
-        {forceExpanded && (
-          <Link
-            to="/profile"
-            onClick={() => setMobileMenuOpen(false)}
-            className="flex items-center py-4 mb-6 w-full justify-start ml-0.5 animate-fade-in hover:opacity-85 transition-opacity cursor-pointer"
-          >
-            <div className="w-11 h-11 rounded-xl gradient-primary text-white shadow-lg shadow-blue-500/30 shrink-0 flex items-center justify-center font-black text-xl">
-              S
-            </div>
-            <motion.div
-              animate={{
-                opacity: isExpanded ? 1 : 0,
-                width: isExpanded ? "auto" : 0,
-                marginLeft: isExpanded ? 12 : 0
-              }}
-              transition={{ duration: 0.2, ease: "easeInOut" }}
-              className="overflow-hidden whitespace-nowrap flex flex-col justify-center"
-            >
-              <h1 className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300">
-                Study Mania
-              </h1>
-              <span className="text-xs font-semibold text-sky-500 uppercase tracking-widest block mt-0.5">
-                v1.1 Premium
-              </span>
-            </motion.div>
-          </Link>
-        )}
-
-        {/* Gamified User Card */}
-        <motion.div
-          layout
-          className={`mb-6 transition-all duration-300 flex flex-col ${isExpanded
-            ? "p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/50 w-full"
-            : "p-0 bg-transparent border-transparent w-full items-center justify-center"
-            }`}
-        >
-          <Link
-            to="/profile"
-            onClick={() => setMobileMenuOpen(false)}
-            className={`flex items-center w-full hover:opacity-85 transition-opacity cursor-pointer ${isExpanded ? "justify-start" : "justify-center"}`}
-          >
-            <motion.img
-              layout
-              src={user.avatar}
-              alt="Avatar"
-              className="w-10 h-10 rounded-xl bg-sky-100 dark:bg-sky-950 p-1 object-cover border border-sky-200 dark:border-sky-800 shrink-0"
-            />
-            <motion.div
-              animate={{
-                opacity: isExpanded ? 1 : 0,
-                width: isExpanded ? "auto" : 0,
-                marginLeft: isExpanded ? 12 : 0
-              }}
-              transition={{ duration: 0.2, ease: "easeInOut" }}
-              className="overflow-hidden whitespace-nowrap flex flex-col justify-center flex-1"
-            >
-              <h3 className="font-semibold text-sm truncate">{user.name}</h3>
-              <span className="text-xs text-gray-500 dark:text-gray-400">Level {user.level} Scholar</span>
-            </motion.div>
-          </Link>
-          {/* XP Bar */}
-          <motion.div
-            animate={{
-              height: isExpanded ? "auto" : 0,
-              opacity: isExpanded ? 1 : 0,
-              marginTop: isExpanded ? 12 : 0
-            }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
-            className="w-full overflow-hidden"
-          >
-            <div className="flex justify-between text-xs font-bold mb-1 text-gray-500">
-              <span>XP: {user.xp}/{xpNeeded}</span>
-              <span>{xpPercent}%</span>
-            </div>
-            <div className="h-2 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${xpPercent}%` }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
-                className="h-full gradient-primary rounded-full"
-              />
-            </div>
-          </motion.div>
-        </motion.div>
-
-        {/* Navigation */}
-        <ul className={`flex-1 space-y-1.5 ${isExpanded ? "pr-1 overflow-y-auto" : "overflow-y-hidden"}`}>
-          {navItems.map(item => {
-            const Icon = item.icon;
-            return (
-              <li key={item.path}>
-                <NavLink
-                  to={item.path}
-                  end
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={({ isActive }) =>
-                    `flex items-center rounded-xl transition-all duration-200 group text-sm font-medium ${isExpanded
-                      ? "w-full px-3.5 py-3 justify-start"
-                      : "w-11 h-11 justify-center mx-auto"
-                    } ${isActive
-                      ? "gradient-primary text-white shadow-md shadow-blue-500/15"
-                      : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800/50 hover:text-gray-900 dark:hover:text-white"
-                    }`
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      <Icon className={`h-5 w-5 transition-transform duration-200 group-hover:scale-110 shrink-0 ${isActive ? "text-white" : "text-gray-400 group-hover:text-sky-500"}`} />
-                      <motion.span
-                        animate={{
-                          opacity: isExpanded ? 1 : 0,
-                          width: isExpanded ? "auto" : 0,
-                          marginLeft: isExpanded ? 12 : 0
-                        }}
-                        transition={{ duration: 0.2, ease: "easeInOut" }}
-                        className="overflow-hidden whitespace-nowrap"
-                      >
-                        {item.name}
-                      </motion.span>
-                    </>
-                  )}
-                </NavLink>
-              </li>
-            );
-          })}
-        </ul>
-
-        {/* Footer Controls */}
-        <div className="pt-4 border-t border-slate-100 dark:border-slate-800/80 space-y-2">
-          <button
-            onClick={toggleTheme}
-            className={`flex items-center rounded-xl transition-all duration-200 text-m font-medium ${isExpanded
-              ? "justify-between w-full px-3.5 py-3 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/50 text-gray-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-              : "w-11 h-11 justify-center mx-auto text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-800/50 hover:text-gray-900 dark:hover:text-white"
-              }`}
-          >
-            {darkMode ? <Sun className="h-5 w-5 text-amber-500 shrink-0" /> : <Moon className="h-5 w-5 text-indigo-500 shrink-0" />}
-            <motion.span
-              animate={{
-                opacity: isExpanded ? 1 : 0,
-                width: isExpanded ? "auto" : 0,
-                marginLeft: isExpanded ? 8 : 0
-              }}
-              transition={{ duration: 0.2, ease: "easeInOut" }}
-              className="overflow-hidden whitespace-nowrap"
-            >
-              {darkMode ? "Light Mode" : "Dark Mode"}
-            </motion.span>
-          </button>
-
-          <button
-            onClick={logout}
-            className={`flex items-center rounded-xl transition-all duration-200 text-m font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 ${isExpanded
-              ? "w-full px-3.5 py-3 justify-start gap-3"
-              : "w-11 h-11 justify-center mx-auto"
-              }`}
-            title="Sign Out"
-          >
-            <LogOut className="h-5 w-5 shrink-0" />
-            <motion.span
-              animate={{
-                opacity: isExpanded ? 1 : 0,
-                width: isExpanded ? "auto" : 0,
-              }}
-              transition={{ duration: 0.2, ease: "easeInOut" }}
-              className="overflow-hidden whitespace-nowrap"
-            >
-              Sign Out
-            </motion.span>
-          </button>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div className={darkMode ? "dark" : ""}>
@@ -562,13 +588,13 @@ const MainLayout: React.FC = () => {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
-                      className="fixed top-16 left-4 right-4 z-50 w-auto sm:absolute sm:top-auto sm:left-auto sm:right-0 sm:mt-3 sm:w-96 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-2xl overflow-hidden backdrop-blur-md text-left"
+                      className="fixed top-16 right-4 left-auto z-50 w-[calc(100vw-2rem)] sm:absolute sm:top-auto sm:left-auto sm:right-0 sm:mt-2 sm:w-80 rounded-2xl bg-white/95 dark:bg-slate-900/95 border border-slate-200/80 dark:border-slate-800/80 shadow-2xl overflow-hidden backdrop-blur-md text-left"
                     >
                       {/* Header */}
-                      <div className="p-4 bg-slate-50 dark:bg-slate-950 border-b border-slate-250/50 dark:border-slate-805/80 flex items-center justify-between">
-                        <h4 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
-                          <Bell className="h-4 w-4 text-indigo-500" />
-                          <span>Notification History</span>
+                      <div className="p-3 bg-slate-50/90 dark:bg-slate-950/90 border-b border-slate-200/50 dark:border-slate-800/50 flex items-center justify-between">
+                        <h4 className="font-bold text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <Bell className="h-3.5 w-3.5 text-indigo-500" />
+                          <span>Notifications</span>
                         </h4>
                         {notifications.length > 0 && (
                           <button
@@ -578,7 +604,7 @@ const MainLayout: React.FC = () => {
                               localStorage.setItem("notifications_last_checked", String(now));
                               setShowNotifications(false);
                             }}
-                            className="text-[10px] font-black text-indigo-650 dark:text-indigo-400 uppercase tracking-wider hover:opacity-85 cursor-pointer"
+                            className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider hover:opacity-85 cursor-pointer"
                           >
                             Mark all as read
                           </button>
@@ -586,12 +612,12 @@ const MainLayout: React.FC = () => {
                       </div>
 
                       {/* Notification list */}
-                      <div className="max-h-[360px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/40 custom-scrollbar">
+                      <div className="max-h-[300px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/40 custom-scrollbar">
                         {notifications.length === 0 ? (
-                          <div className="py-12 px-6 text-center text-slate-400 dark:text-slate-500 space-y-2">
-                            <Bell className="h-8 w-8 mx-auto stroke-1 text-slate-300 dark:text-slate-700" />
+                          <div className="py-8 px-4 text-center text-slate-400 dark:text-slate-500 space-y-1.5">
+                            <Bell className="h-6 w-6 mx-auto stroke-1 text-slate-300 dark:text-slate-700" />
                             <p className="text-xs font-semibold">No notifications yet</p>
-                            <p className="text-[10px] opacity-75">Your study activity, cheers, and request updates will show here.</p>
+                            <p className="text-[10px] opacity-75 leading-relaxed">Your study activity, cheers, and partner updates will show here.</p>
                           </div>
                         ) : (
                           notifications.map((notif) => {
@@ -603,22 +629,22 @@ const MainLayout: React.FC = () => {
                               <div
                                 key={notif.id}
                                 onClick={() => handleNotificationClick(notif)}
-                                className={`p-4 flex gap-3 hover:bg-slate-50/55 dark:hover:bg-slate-800/25 transition-all cursor-pointer ${isUnread ? "bg-indigo-50/10 dark:bg-indigo-950/5 border-l-2 border-l-indigo-500" : ""
+                                className={`p-3 flex gap-2.5 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-all cursor-pointer ${isUnread ? "bg-indigo-50/10 dark:bg-indigo-950/5 border-l-2 border-l-indigo-500" : ""
                                   }`}
                               >
-                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${notif.color}`}>
+                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${notif.color}`}>
                                   {renderNotificationIcon(notif.icon)}
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                  <div className="flex justify-between items-baseline gap-2">
-                                    <span className="font-extrabold text-xs text-slate-800 dark:text-slate-200 truncate">
+                                  <div className="flex justify-between items-baseline gap-1.5">
+                                    <span className="font-bold text-xs text-slate-800 dark:text-slate-200 truncate">
                                       {notif.title}
                                     </span>
-                                    <span className="text-[9px] text-slate-400 dark:text-slate-500 font-bold shrink-0">
+                                    <span className="text-[8px] text-slate-400 dark:text-slate-500 font-semibold shrink-0">
                                       {dateStr} {timeStr}
                                     </span>
                                   </div>
-                                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium leading-normal mt-0.5">
+                                  <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-normal mt-0.5">
                                     {notif.text}
                                   </p>
                                 </div>
@@ -643,7 +669,16 @@ const MainLayout: React.FC = () => {
             transition={{ duration: 0.25, ease: "easeInOut" }}
             className="hidden lg:block h-full p-4 border-r border-slate-200/60 dark:border-slate-900/60 bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl z-20 shrink-0 relative"
           >
-            <SidebarContent />
+            <SidebarContent
+              desktopExpanded={desktopExpanded}
+              setMobileMenuOpen={setMobileMenuOpen}
+              user={user}
+              xpNeeded={xpNeeded}
+              xpPercent={xpPercent}
+              toggleTheme={toggleTheme}
+              darkMode={darkMode}
+              logout={logout}
+            />
           </motion.aside>
 
           {/* Mobile Sidebar Navigation Drawer */}
@@ -673,7 +708,17 @@ const MainLayout: React.FC = () => {
                     <X className="h-4.5 w-4.5" />
                   </button>
                   <div className="flex-1 overflow-hidden mt-4">
-                    <SidebarContent forceExpanded={true} />
+                    <SidebarContent
+                      forceExpanded={true}
+                      desktopExpanded={desktopExpanded}
+                      setMobileMenuOpen={setMobileMenuOpen}
+                      user={user}
+                      xpNeeded={xpNeeded}
+                      xpPercent={xpPercent}
+                      toggleTheme={toggleTheme}
+                      darkMode={darkMode}
+                      logout={logout}
+                    />
                   </div>
                 </motion.aside>
               </>
@@ -683,9 +728,13 @@ const MainLayout: React.FC = () => {
           {/* Main Content Area */}
           <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
             {/* Interactive main outlet container */}
-            <main className="flex-1 overflow-y-auto px-4 md:px-8 lg:px-10 relative pb-24 lg:pb-10">
+            <main className={`flex-1 relative ${
+              isChatPage 
+                ? "overflow-hidden h-full w-full" 
+                : "overflow-y-auto px-4 md:px-8 lg:px-10 pb-24 lg:pb-10"
+            }`}>
               {/* Page content animations wrap */}
-              <div className="max-w-7xl mx-auto w-full pb-10">
+              <div className={isChatPage ? "h-full w-full" : "max-w-7xl mx-auto w-full pb-10"}>
                 <Outlet />
               </div>
             </main>
@@ -769,7 +818,7 @@ const MainLayout: React.FC = () => {
 
                     {/* Partner Chat Room */}
                     <Link
-                      to="/profile"
+                      to="/chats"
                       onClick={() => setShowQuickAdd(false)}
                       className="flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-lg text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors"
                     >
@@ -792,6 +841,17 @@ const MainLayout: React.FC = () => {
                   </motion.div>
                 )}
               </AnimatePresence>
+
+              {/* Floating Chat Button (above Plus button on mobile) */}
+              {!showQuickAdd && (
+                <Link
+                  to="/chats"
+                  className="fixed bottom-35 right-4 z-40 h-12 w-12 rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/25 flex items-center justify-center cursor-pointer active:scale-95 transition-all"
+                  title="Chats"
+                >
+                  <MessageSquare className="h-5.5 w-5.5" />
+                </Link>
+              )}
 
               {/* Toggle FAB Button */}
               <motion.button

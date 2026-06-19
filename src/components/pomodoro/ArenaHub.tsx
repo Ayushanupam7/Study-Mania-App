@@ -10,7 +10,10 @@ import {
   Users,
   Settings,
   Clock,
-  Flame
+  Flame,
+  Zap,
+  CheckCircle2,
+  Sparkles
 } from "lucide-react";
 
 export interface Competitor {
@@ -33,6 +36,11 @@ export interface Quest {
   xp: string;
   completed: boolean;
   progress: string;
+  icon?: string;
+  rarity?: "common" | "rare" | "epic" | "legendary";
+  current?: number;
+  total?: number;
+  category?: string;
 }
 
 export interface FeedEvent {
@@ -788,69 +796,132 @@ export const ArenaHub: React.FC<ArenaHubProps> = ({
         )}
 
         {rightTab === "quests" && (
-          <div className="flex-1 flex flex-col min-h-0 space-y-4">
+          <div className="flex-1 flex flex-col min-h-0 space-y-3">
+            {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-3 shrink-0">
               <div>
-                <h4 className="font-extrabold text-sm text-slate-800 dark:text-white">Daily Milestones</h4>
-                <p className="text-[10px] text-slate-500 mt-0.5">Complete focus milestones to claim daily scholar XP.</p>
+                <h4 className="font-extrabold text-sm text-slate-800 dark:text-white flex items-center gap-1.5">
+                  <Sparkles className="h-4 w-4 text-violet-500" />
+                  Daily Quests
+                </h4>
+                <p className="text-[10px] text-slate-500 mt-0.5">Complete quests to earn scholar XP today.</p>
               </div>
             </div>
 
-            {/* Milestone Progress Banner */}
-            <div className="bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-slate-200/40 dark:border-slate-800/40 p-4 rounded-2xl space-y-2.5 shadow-sm shrink-0">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <h4 className="font-extrabold text-[10px] text-slate-800 dark:text-white uppercase tracking-wider">Milestones Progress</h4>
-                  <p className="text-[10px] text-slate-500 font-semibold">
-                    {quests.filter(q => q.completed).length} of {quests.length} completed today
-                  </p>
-                </div>
-                <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 font-mono bg-indigo-500/10 dark:bg-indigo-500/20 px-2 py-0.5 rounded-lg border border-indigo-500/10">
-                  {Math.round((quests.filter(q => q.completed).length / quests.length) * 100)}%
-                </span>
-              </div>
-              <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden border border-slate-200 dark:border-slate-800/50">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.round((quests.filter(q => q.completed).length / quests.length) * 100)}%` }}
-                  transition={{ duration: 0.8, ease: "easeOut" }}
-                  className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 shadow-sm shadow-indigo-500/10"
-                />
-              </div>
-            </div>
+            {/* XP Summary Banner */}
+            {(() => {
+              const totalXpEarned = quests.filter(q => q.completed).reduce((sum, q) => sum + parseInt(q.xp.replace(/\D/g, "") || "0"), 0);
+              const totalXpAvail  = quests.reduce((sum, q) => sum + parseInt(q.xp.replace(/\D/g, "") || "0"), 0);
+              const completedCount = quests.filter(q => q.completed).length;
+              const pct = totalXpAvail > 0 ? Math.round((totalXpEarned / totalXpAvail) * 100) : 0;
 
-            <div className="space-y-3 flex-1 overflow-y-auto pr-1">
-              {quests.map(quest => (
-                <motion.div
-                  key={quest.id}
-                  whileHover={{ y: -1 }}
-                  className={`p-3.5 rounded-2xl border flex items-center justify-between gap-4 transition-all shadow-sm ${quest.completed
-                    ? "bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/30"
-                    : "bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700/80"
-                    }`}
-                >
-                  <div className="min-w-0 flex-1 space-y-1">
+              return (
+                <div className="bg-gradient-to-r from-indigo-500/10 via-violet-500/10 to-amber-500/10 border border-slate-200/40 dark:border-slate-800/40 p-3.5 rounded-2xl space-y-2 shadow-sm shrink-0">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <h4 className={`font-bold text-sm truncate ${quest.completed ? "text-emerald-700 dark:text-emerald-400 line-through opacity-85" : "text-slate-800 dark:text-white"}`}>
-                        {quest.title}
-                      </h4>
-                      <span
-                        className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase border shrink-0 ${quest.completed ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-indigo-500/10 border-indigo-500/20 text-indigo-600 dark:text-indigo-400"
-                          }`}
-                      >
-                        {quest.xp}
-                      </span>
+                      <div className="p-1.5 rounded-lg bg-amber-500/15 border border-amber-500/20">
+                        <Zap className="h-3.5 w-3.5 text-amber-500" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-extrabold text-slate-700 dark:text-slate-300">Quest XP Earned</p>
+                        <p className="text-[9px] text-slate-400 dark:text-slate-500 font-semibold">{completedCount}/{quests.length} quests done</p>
+                      </div>
                     </div>
-                    <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 leading-normal">{quest.desc}</p>
+                    <span className="text-sm font-black text-amber-600 dark:text-amber-400 font-mono">
+                      {totalXpEarned}<span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">/{totalXpAvail} XP</span>
+                    </span>
                   </div>
-                  <div
-                    className={`px-2.5 py-1 rounded-xl text-xs font-black shrink-0 border shadow-sm ${quest.completed ? "bg-emerald-500 border-emerald-500 text-white" : "bg-slate-50 dark:bg-slate-950 border-slate-200/60 dark:border-slate-800 text-slate-500 dark:text-slate-400"
-                      }`}
+                  <div className="h-2 w-full bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden border border-slate-200 dark:border-slate-800/50">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${pct}%` }}
+                      transition={{ duration: 0.8, ease: "easeOut" }}
+                      className="h-full rounded-full bg-gradient-to-r from-amber-400 via-orange-400 to-yellow-400 shadow-sm"
+                    />
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Quest Cards */}
+            <div className="space-y-2.5 flex-1 overflow-y-auto pr-0.5">
+              {quests.map(quest => {
+                const rarity = quest.rarity || "common";
+                const rarityConfig: Record<string, { border: string; bg: string; badge: string; bar: string }> = {
+                  common:    { border: "border-slate-200 dark:border-slate-700",          bg: "",                                     badge: "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300",              bar: "from-slate-400 to-slate-500" },
+                  rare:      { border: "border-sky-400/30 dark:border-sky-500/20",         bg: "dark:bg-sky-500/3",                      badge: "bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/20",          bar: "from-sky-400 to-blue-500" },
+                  epic:      { border: "border-violet-400/30 dark:border-violet-500/20",   bg: "dark:bg-violet-500/3",                   badge: "bg-violet-500/15 text-violet-600 dark:text-violet-400 border border-violet-500/20", bar: "from-violet-400 to-purple-600" },
+                  legendary: { border: "border-amber-400/40 dark:border-amber-500/25",     bg: "bg-amber-500/3 dark:bg-amber-500/3",     badge: "bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30",  bar: "from-amber-400 to-orange-500" },
+                };
+                const rc = rarityConfig[rarity];
+                const current = quest.current ?? 0;
+                const total = quest.total ?? 1;
+                const pct = total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0;
+
+                return (
+                  <motion.div
+                    key={quest.id}
+                    whileHover={{ y: -1 }}
+                    className={`relative p-3.5 rounded-2xl border flex gap-3 transition-all shadow-sm
+                      ${rc.bg} ${rc.border}
+                      ${quest.completed ? "opacity-75" : "hover:border-opacity-60"}
+                    `}
                   >
-                    {quest.completed ? "✓ Claimed" : quest.progress}
-                  </div>
-                </motion.div>
-              ))}
+                    {/* Emoji icon */}
+                    <div className="text-xl select-none leading-none shrink-0 mt-0.5">
+                      {quest.icon || "⚡"}
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0 space-y-1.5">
+                      {/* Title row */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <h4 className={`font-extrabold text-xs leading-tight ${quest.completed ? "text-emerald-700 dark:text-emerald-400 line-through opacity-85" : "text-slate-800 dark:text-white"}`}>
+                            {quest.title}
+                          </h4>
+                          <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">{quest.desc}</p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          <span className={`px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wide ${rc.badge}`}>
+                            {rarity}
+                          </span>
+                          <span className="text-[9px] font-black text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-md whitespace-nowrap">
+                            {quest.xp}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Progress bar */}
+                      <div className="space-y-0.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">{quest.category || "Focus"}</span>
+                          <span className="text-[9px] font-black text-slate-600 dark:text-slate-400">
+                            {quest.completed ? "✓ Complete" : `${current}/${total}`}
+                          </span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${quest.completed ? 100 : pct}%` }}
+                            transition={{ duration: 0.7, ease: "easeOut" }}
+                            className={`h-full rounded-full bg-gradient-to-r ${quest.completed ? "from-emerald-400 to-emerald-500" : rc.bar}`}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Completed badge */}
+                    {quest.completed && (
+                      <div className="absolute top-2.5 right-2.5">
+                        <div className="h-4 w-4 rounded-full bg-emerald-500 flex items-center justify-center shadow-sm">
+                          <CheckCircle2 className="h-3 w-3 text-white" />
+                        </div>
+                      </div>
+                    )}
+                  </motion.div>
+                );
+              })}
             </div>
           </div>
         )}

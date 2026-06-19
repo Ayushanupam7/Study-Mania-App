@@ -298,7 +298,7 @@ export const ChatPage: React.FC = () => {
                     ) : (
                       "Offline"
                     )}
-                    {" A "}{activeChatFriend.major}
+                    {" • "}{activeChatFriend.major}
                   </p>
                 </div>
               </div>

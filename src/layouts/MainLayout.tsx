@@ -288,7 +288,7 @@ const MainLayout: React.FC = () => {
           status: "online",
         });
       }
-      navigate("/profile");
+      navigate("/chats");
     } else if (notif.type === "friend_request" || notif.type === "cheer") {
       navigate("/profile");
     }

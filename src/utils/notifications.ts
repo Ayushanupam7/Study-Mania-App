@@ -19,7 +19,7 @@ export const initializeNotifications = async () => {
     // Request push notification permissions
     const pushPerm = await PushNotifications.requestPermissions();
     console.log("Push notifications permission status:", pushPerm.receive);
-    
+
     if (pushPerm.receive === "granted") {
       await PushNotifications.register();
     }
@@ -34,11 +34,11 @@ const handleNotificationAction = (data: any) => {
   console.log("Handling click action redirect with data:", data);
 
   try {
-    if (data.type === "chat_message" && data.friend) {
+    if ((data.type === "chat_message" || data.type === "message") && data.friend) {
       useStore.getState().setActiveChatFriend(data.friend);
-      window.location.hash = "#/profile";
+      window.location.hash = "#/chats";
     } else if (data.type === "friend_request" || data.type === "cheer") {
-      window.location.hash = "#/profile";
+      window.location.hash = "#/chats";
     }
   } catch (err) {
     console.error("Error executing notification action redirect:", err);

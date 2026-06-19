@@ -731,7 +731,7 @@ const MainLayout: React.FC = () => {
             {/* Interactive main outlet container */}
             <main className={`flex-1 relative ${
               isChatPage 
-                ? "overflow-hidden h-full w-full pb-16 lg:pb-0" 
+                ? `overflow-hidden h-full w-full ${activeChatFriend ? "pb-0" : "pb-16"} lg:pb-0` 
                 : "overflow-y-auto px-4 md:px-8 lg:px-10 pb-24 lg:pb-10"
             }`}>
               {/* Page content animations wrap */}
@@ -831,36 +831,38 @@ const MainLayout: React.FC = () => {
             )}
 
             {/* Mobile Bottom Navigation (Glassmorphic) */}
-            <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-t border-slate-200/60 dark:border-slate-800/60 z-30 flex items-center justify-around px-4 shadow-lg shadow-black/5">
-              {bottomNavItems.map(item => {
-                const Icon = item.icon;
-                return (
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    end
-                    className={({ isActive }) =>
-                      `flex flex-col items-center justify-center flex-1 h-full py-1 text-xs font-semibold transition-all duration-200 ${isActive
-                        ? "text-sky-500"
-                        : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                      }`
-                    }
-                  >
-                    <Icon className="h-5 w-5 mb-0.5" />
-                    <span className="text-[10px]">{item.name}</span>
-                  </NavLink>
-                );
-              })}
+            {!(isChatPage && activeChatFriend) && (
+              <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-t border-slate-200/60 dark:border-slate-800/60 z-30 flex items-center justify-around px-4 shadow-lg shadow-black/5">
+                {bottomNavItems.map(item => {
+                  const Icon = item.icon;
+                  return (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      end
+                      className={({ isActive }) =>
+                        `flex flex-col items-center justify-center flex-1 h-full py-1 text-xs font-semibold transition-all duration-200 ${isActive
+                          ? "text-sky-500"
+                          : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                        }`
+                      }
+                    >
+                      <Icon className="h-5 w-5 mb-0.5" />
+                      <span className="text-[10px]">{item.name}</span>
+                    </NavLink>
+                  );
+                })}
 
-              {/* Sidebar toggle option in Bottom Nav */}
-              {/* <button
-                onClick={() => setMobileMenuOpen(true)}
-                className="flex flex-col items-center justify-center flex-1 h-full py-1 text-xs font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-              >
-                <Menu className="h-5 w-5 mb-0.5" />
-                <span className="text-[10px]">Menu</span>
-              </button> */}
-            </nav>
+                {/* Sidebar toggle option in Bottom Nav */}
+                {/* <button
+                  onClick={() => setMobileMenuOpen(true)}
+                  className="flex flex-col items-center justify-center flex-1 h-full py-1 text-xs font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                >
+                  <Menu className="h-5 w-5 mb-0.5" />
+                  <span className="text-[10px]">Menu</span>
+                </button> */}
+              </nav>
+            )}
           </div>
         </div>
       </div>

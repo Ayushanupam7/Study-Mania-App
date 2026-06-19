@@ -730,7 +730,7 @@ const MainLayout: React.FC = () => {
             {/* Interactive main outlet container */}
             <main className={`flex-1 relative ${
               isChatPage 
-                ? "overflow-hidden h-full w-full" 
+                ? "overflow-hidden h-full w-full pb-16 lg:pb-0" 
                 : "overflow-y-auto px-4 md:px-8 lg:px-10 pb-24 lg:pb-10"
             }`}>
               {/* Page content animations wrap */}

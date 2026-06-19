@@ -260,6 +260,7 @@ const MainLayout: React.FC = () => {
 
   const userUid = useStore(state => state.userUid);
   const friends = useStore(state => state.friends);
+  const activeChatFriend = useStore(state => state.activeChatFriend);
   const setActiveChatFriend = useStore(state => state.setActiveChatFriend);
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -740,130 +741,105 @@ const MainLayout: React.FC = () => {
             </main>
 
             {/* Mobile Plus Floating Action Button (FAB) & Quick Menu */}
-            <div className="lg:hidden">
-              {/* Backdrop when menu is open */}
-              <AnimatePresence>
-                {showQuickAdd && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 0.4 }}
-                    exit={{ opacity: 0 }}
-                    onClick={() => setShowQuickAdd(false)}
-                    className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-35"
-                  />
-                )}
-              </AnimatePresence>
+            {!(isChatPage && activeChatFriend) && (
+              <div className="lg:hidden">
+                {/* Backdrop when menu is open */}
+                <AnimatePresence>
+                  {showQuickAdd && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 0.4 }}
+                      exit={{ opacity: 0 }}
+                      onClick={() => setShowQuickAdd(false)}
+                      className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-35"
+                    />
+                  )}
+                </AnimatePresence>
 
-              {/* Quick Add Menu */}
-              <AnimatePresence>
-                {showQuickAdd && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 15, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 15, scale: 0.95 }}
-                    transition={{ type: "spring", damping: 20, stiffness: 250 }}
-                    className="fixed bottom-34 right-4 z-40 flex flex-col items-end gap-3"
+                {/* Quick Add Menu */}
+                <AnimatePresence>
+                  {showQuickAdd && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 15, scale: 0.95 }}
+                      transition={{ type: "spring", damping: 20, stiffness: 250 }}
+                      className="fixed bottom-49 right-4 z-40 flex flex-col items-end gap-3"
+                    >
+                      {/* Add Countdown */}
+                      <Link
+                        to="/countdowns"
+                        onClick={() => setShowQuickAdd(false)}
+                        className="flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-lg text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors"
+                      >
+                        <span className="text-xs font-bold">New Exam / Countdown</span>
+                        <div className="p-2 rounded-xl bg-purple-500 text-white shadow-md">
+                          <Calendar className="h-4 w-4" />
+                        </div>
+                      </Link>
+
+                      {/* Add Pomodoro */}
+                      <Link
+                        to="/pomodoro"
+                        onClick={() => setShowQuickAdd(false)}
+                        className="flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-lg text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors"
+                      >
+                        <span className="text-xs font-bold">New Pomodoro Timer</span>
+                        <div className="p-2 rounded-xl bg-orange-500 text-white shadow-md">
+                          <Flame className="h-4 w-4" />
+                        </div>
+                      </Link>
+
+                      {/* Partner Chat Room */}
+                      <Link
+                        to="/chats"
+                        onClick={() => setShowQuickAdd(false)}
+                        className="flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-lg text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors"
+                      >
+                        <span className="text-xs font-bold">Partner Chat Room</span>
+                        <div className="p-2 rounded-xl bg-emerald-500 text-white shadow-md">
+                          <MessageSquare className="h-4 w-4" />
+                        </div>
+                      </Link>
+                      
+                      {/* Add Task */}
+                      <Link
+                        to="/todos"
+                        onClick={() => setShowQuickAdd(false)}
+                        className="flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-lg text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors"
+                      >
+                        <span className="text-xs font-bold">Add To-Do Task</span>
+                        <div className="p-2 rounded-xl bg-sky-500 text-white shadow-md">
+                          <CheckSquare className="h-4 w-4" />
+                        </div>
+                      </Link>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Floating Chat Button (under Plus button on mobile) */}
+                {!showQuickAdd && (
+                  <Link
+                    to="/chats"
+                    className="fixed bottom-20 right-4 z-40 h-12 w-12 rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/25 flex items-center justify-center cursor-pointer active:scale-95 transition-all"
+                    title="Chats"
                   >
-
-
-                    {/* Add Countdown */}
-                    <Link
-                      to="/countdowns"
-                      onClick={() => setShowQuickAdd(false)}
-                      className="flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-lg text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors"
-                    >
-                      <span className="text-xs font-bold">New Exam / Countdown</span>
-                      <div className="p-2 rounded-xl bg-purple-500 text-white shadow-md">
-                        <Calendar className="h-4 w-4" />
-                      </div>
-                    </Link>
-
-                    {/* Add Note */}
-                    {/* <Link
-                      to="/notes"
-                      onClick={() => setShowQuickAdd(false)}
-                      className="flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-lg text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors"
-                    >
-                      <span className="text-xs font-bold">New Study Note</span>
-                      <div className="p-2 rounded-xl bg-rose-500 text-white shadow-md">
-                        <BookOpen className="h-4 w-4" />
-                      </div>
-                    </Link> */}
-
-                    {/* Add Habit */}
-                    {/* <Link
-                      to="/habits"
-                      onClick={() => setShowQuickAdd(false)}
-                      className="flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-lg text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors"
-                    >
-                      <span className="text-xs font-bold">New Habit Streak</span>
-                      <div className="p-2 rounded-xl bg-orange-500 text-white shadow-md">
-                        <Flame className="h-4 w-4" />
-                      </div>
-                    </Link> */}
-
-                    {/* Add Pomodoro */}
-                    <Link
-                      to="/pomodoro"
-                      onClick={() => setShowQuickAdd(false)}
-                      className="flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-lg text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors"
-                    >
-                      <span className="text-xs font-bold">New Pomodoro Timer</span>
-                      <div className="p-2 rounded-xl bg-orange-500 text-white shadow-md">
-                        <Flame className="h-4 w-4" />
-                      </div>
-                    </Link>
-
-
-
-                    {/* Partner Chat Room */}
-                    <Link
-                      to="/chats"
-                      onClick={() => setShowQuickAdd(false)}
-                      className="flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-lg text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors"
-                    >
-                      <span className="text-xs font-bold">Partner Chat Room</span>
-                      <div className="p-2 rounded-xl bg-emerald-500 text-white shadow-md">
-                        <MessageSquare className="h-4 w-4" />
-                      </div>
-                    </Link>
-                    {/* Add Task */}
-                    <Link
-                      to="/todos"
-                      onClick={() => setShowQuickAdd(false)}
-                      className="flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-lg text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors"
-                    >
-                      <span className="text-xs font-bold">Add To-Do Task</span>
-                      <div className="p-2 rounded-xl bg-sky-500 text-white shadow-md">
-                        <CheckSquare className="h-4 w-4" />
-                      </div>
-                    </Link>
-                  </motion.div>
+                    <MessageSquare className="h-5.5 w-5.5" />
+                  </Link>
                 )}
-              </AnimatePresence>
 
-              {/* Floating Chat Button (above Plus button on mobile) */}
-              {!showQuickAdd && (
-                <Link
-                  to="/chats"
-                  className="fixed bottom-35 right-4 z-40 h-12 w-12 rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/25 flex items-center justify-center cursor-pointer active:scale-95 transition-all"
-                  title="Chats"
+                {/* Toggle FAB Button */}
+                <motion.button
+                  onClick={() => setShowQuickAdd(!showQuickAdd)}
+                  animate={{ rotate: showQuickAdd ? 135 : 0 }}
+                  transition={{ type: "spring", damping: 18, stiffness: 200 }}
+                  className="fixed bottom-35 right-4 z-40 h-12 w-12 rounded-full gradient-primary text-white shadow-lg shadow-blue-500/25 flex items-center justify-center cursor-pointer active:scale-95 transition-all"
+                  title="Quick Add Menu"
                 >
-                  <MessageSquare className="h-5.5 w-5.5" />
-                </Link>
-              )}
-
-              {/* Toggle FAB Button */}
-              <motion.button
-                onClick={() => setShowQuickAdd(!showQuickAdd)}
-                animate={{ rotate: showQuickAdd ? 135 : 0 }}
-                transition={{ type: "spring", damping: 18, stiffness: 200 }}
-                className="fixed bottom-20 right-4 z-40 h-12 w-12 rounded-full gradient-primary text-white shadow-lg shadow-blue-500/25 flex items-center justify-center cursor-pointer active:scale-95 transition-all"
-                title="Quick Add Menu"
-              >
-                <Plus className="h-6 w-6" />
-              </motion.button>
-            </div>
+                  <Plus className="h-6 w-6" />
+                </motion.button>
+              </div>
+            )}
 
             {/* Mobile Bottom Navigation (Glassmorphic) */}
             <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-t border-slate-200/60 dark:border-slate-800/60 z-30 flex items-center justify-around px-4 shadow-lg shadow-black/5">

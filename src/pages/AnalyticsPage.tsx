@@ -112,7 +112,7 @@ const AnalyticsPage: React.FC = () => {
             </h3>
             <span className="text-[10px] uppercase font-bold text-gray-400">Live Sync</span>
           </div>
-          <div className="h-72">
+          <div className="h-72 w-full min-w-0 relative">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={studyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
@@ -148,7 +148,7 @@ const AnalyticsPage: React.FC = () => {
             </h3>
             <span className="text-[10px] uppercase font-bold text-gray-400">All-time</span>
           </div>
-          <div className="h-72">
+          <div className="h-72 w-full min-w-0 relative">
             {habitChartData.length === 0 ? (
               <div className="h-full flex items-center justify-center text-sm text-gray-500">
                 No habits logged. Complete daily habits to view trends!

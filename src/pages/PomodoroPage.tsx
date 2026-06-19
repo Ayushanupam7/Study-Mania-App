@@ -74,6 +74,12 @@ const PomodoroPage: React.FC = () => {
   // Tracks the wall-clock moment the user pressed Start for the current session
   const sessionStartTimeRef = useRef<number | null>(null);
 
+  // Wall-clock based timer: stores the timestamp when timer was last started/resumed
+  // and how many seconds were on the clock at that moment (for pomodoro: seconds remaining;
+  // for stopwatch: seconds elapsed so far before this resume).
+  const timerResumeWallRef = useRef<number | null>(null);   // Date.now() when resumed
+  const timerBaseSecondsRef = useRef<number>(0);             // value of secondsLeft at resume
+
   const [currentTrackId, setCurrentTrackId] = useState("lofi");
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
   const [musicVolume, setMusicVolume] = useState(0.5); // Range: 0 to 1
@@ -430,36 +436,76 @@ const PomodoroPage: React.FC = () => {
 
   // Reset seconds left when settings change or timer mode is toggled
   useEffect(() => {
-    if (timerType === "pomodoro") {
-      setSecondsLeft(getDuration(mode));
-    } else {
-      setSecondsLeft(0);
+    if (!isRunning) {
+      if (timerType === "pomodoro") {
+        setSecondsLeft(getDuration(mode));
+      } else {
+        setSecondsLeft(0);
+      }
     }
   }, [storeWorkTime, storeShortBreak, storeLongBreak, mode, timerType]);
 
+  // Wall-clock based timer — immune to tab/screen minimization
   useEffect(() => {
     if (isRunning) {
+      // Record resume point
+      timerResumeWallRef.current = Date.now();
+      timerBaseSecondsRef.current = secondsLeft;
+
       intervalRef.current = setInterval(() => {
+        const wallElapsed = Math.floor((Date.now() - (timerResumeWallRef.current ?? Date.now())) / 1000);
+
         if (timerType === "pomodoro") {
-          setSecondsLeft(prev => {
-            if (prev <= 1) {
-              handleSessionComplete();
-              return 0;
-            }
-            return prev - 1;
-          });
+          const newSeconds = timerBaseSecondsRef.current - wallElapsed;
+          if (newSeconds <= 0) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+            setSecondsLeft(0);
+            handleSessionComplete();
+          } else {
+            setSecondsLeft(newSeconds);
+          }
         } else {
-          setSecondsLeft(prev => prev + 1);
+          // Stopwatch: count up
+          setSecondsLeft(timerBaseSecondsRef.current + wallElapsed);
         }
-      }, 1000);
-    } else if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
+      }, 500); // Poll every 500ms for smooth display, but value from wall clock
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      timerResumeWallRef.current = null;
     }
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [isRunning, timerType, mode]);
+
+  // Page Visibility API: when the user returns from a minimized/background state,
+  // immediately recalculate the correct time from the wall clock so there's no lag.
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && isRunning && timerResumeWallRef.current !== null) {
+        const wallElapsed = Math.floor((Date.now() - timerResumeWallRef.current) / 1000);
+        if (timerType === "pomodoro") {
+          const newSeconds = timerBaseSecondsRef.current - wallElapsed;
+          if (newSeconds <= 0) {
+            setSecondsLeft(0);
+            setIsRunning(false);
+            handleSessionComplete();
+          } else {
+            setSecondsLeft(newSeconds);
+          }
+        } else {
+          setSecondsLeft(timerBaseSecondsRef.current + wallElapsed);
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [isRunning, timerType]);
 
   // Schedule/cancel local device notification when timer starts/stops
   useEffect(() => {

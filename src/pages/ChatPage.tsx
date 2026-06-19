@@ -24,14 +24,9 @@ import {
   CheckCheck,
   Smile,
   Palette,
-  Sparkles,
-  BookOpen,
   GraduationCap,
   Quote,
-  RefreshCw,
-  Clock,
-  MoreVertical,
-  Layers
+  RefreshCw
 } from "lucide-react";
 
 interface StudyQuote {

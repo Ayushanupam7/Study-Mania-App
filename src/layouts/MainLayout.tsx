@@ -764,7 +764,7 @@ const MainLayout: React.FC = () => {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 15, scale: 0.95 }}
                       transition={{ type: "spring", damping: 20, stiffness: 250 }}
-                      className="fixed bottom-49 right-4 z-40 flex flex-col items-end gap-3"
+                      className="fixed bottom-34 right-4 z-40 flex flex-col items-end gap-3"
                     >
                       {/* Add Countdown */}
                       <Link
@@ -817,23 +817,12 @@ const MainLayout: React.FC = () => {
                   )}
                 </AnimatePresence>
 
-                {/* Floating Chat Button (under Plus button on mobile) */}
-                {!showQuickAdd && (
-                  <Link
-                    to="/chats"
-                    className="fixed bottom-20 right-4 z-40 h-12 w-12 rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/25 flex items-center justify-center cursor-pointer active:scale-95 transition-all"
-                    title="Chats"
-                  >
-                    <MessageSquare className="h-5.5 w-5.5" />
-                  </Link>
-                )}
-
                 {/* Toggle FAB Button */}
                 <motion.button
                   onClick={() => setShowQuickAdd(!showQuickAdd)}
                   animate={{ rotate: showQuickAdd ? 135 : 0 }}
                   transition={{ type: "spring", damping: 18, stiffness: 200 }}
-                  className="fixed bottom-35 right-4 z-40 h-12 w-12 rounded-full gradient-primary text-white shadow-lg shadow-blue-500/25 flex items-center justify-center cursor-pointer active:scale-95 transition-all"
+                  className="fixed bottom-20 right-4 z-40 h-12 w-12 rounded-full gradient-primary text-white shadow-lg shadow-blue-500/25 flex items-center justify-center cursor-pointer active:scale-95 transition-all"
                   title="Quick Add Menu"
                 >
                   <Plus className="h-6 w-6" />

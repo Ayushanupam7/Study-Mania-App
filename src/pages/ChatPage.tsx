@@ -12,18 +12,12 @@ import {
   setDoc,
   arrayUnion
 } from "firebase/firestore";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   MessageSquare,
   Search,
   Send,
   ArrowLeft,
   Flame,
-  BookOpen,
-  Sparkles,
-  Smile,
-  Info,
-  Clock,
   User,
   Zap
 } from "lucide-react";

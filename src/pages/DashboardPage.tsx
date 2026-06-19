@@ -16,12 +16,7 @@ import {
   Trophy,
   Activity,
   Zap,
-  Star,
-  Target,
-  BookOpen,
-  Sparkles,
-  Shield,
-  Gem
+  Sparkles
 } from "lucide-react";
 import { db } from "../firebase";
 import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
@@ -34,7 +29,6 @@ const DashboardPage: React.FC = () => {
   const toggleHabitDay = useStore(state => state.toggleHabitDay);
   const todayMinutes = useStore(state => state.todayMinutes);
   const sessionCount = useStore(state => state.sessionCount);
-  const totalStudyTime = useStore(state => state.totalStudyTime) || 0;
   const updateTodo = useStore(state => state.updateTodo);
   const checkDailyReset = useStore(state => state.checkDailyReset);
   const today = new Date().toISOString().split("T")[0];

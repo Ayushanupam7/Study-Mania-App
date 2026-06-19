@@ -481,6 +481,11 @@ export const ChatPage: React.FC = () => {
         await uploadTask;
         downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
       } catch (storageErr) {
+        const errCode = (storageErr as any)?.code;
+        const errMsg = (storageErr as any)?.message;
+        if (errCode === "storage/canceled" || errMsg === "Upload cancelled by user.") {
+          throw new Error("Upload cancelled by user.");
+        }
         console.warn("Firebase Storage failed. Using database base64 storage...", storageErr);
         if (file.size > 800 * 1024) {
           throw new Error("File is too large for database fallback storage. Please upload a smaller file (< 800KB).");

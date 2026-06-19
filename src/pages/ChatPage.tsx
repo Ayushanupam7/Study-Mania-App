@@ -198,8 +198,8 @@ export const ChatPage: React.FC = () => {
                   key={friend.id}
                   onClick={() => setActiveChatFriend(friend)}
                   className={`p-3.5 flex gap-3 cursor-pointer transition-all ${isActive
-                      ? "bg-sky-50/40 dark:bg-slate-800/40 border-l-4 border-sky-500"
-                      : "hover:bg-slate-50/50 dark:hover:bg-slate-800/10 border-l-4 border-transparent"
+                    ? "bg-sky-50/40 dark:bg-slate-800/40 border-l-4 border-sky-500"
+                    : "hover:bg-slate-50/50 dark:hover:bg-slate-800/10 border-l-4 border-transparent"
                     }`}
                 >
                   {/* Avatar Container with status dot */}
@@ -298,7 +298,7 @@ export const ChatPage: React.FC = () => {
                     ) : (
                       "Offline"
                     )}
-                    {" • "}{activeChatFriend.major}
+                    {" A "}{activeChatFriend.major}
                   </p>
                 </div>
               </div>
@@ -310,8 +310,8 @@ export const ChatPage: React.FC = () => {
                     onClick={handleSendCheer}
                     disabled={!!cheerSent}
                     className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-all ${cheerSent
-                        ? "bg-emerald-500 text-white"
-                        : "bg-orange-500/10 text-orange-500 hover:bg-orange-500 hover:text-white border border-orange-500/25"
+                      ? "bg-emerald-500 text-white"
+                      : "bg-orange-500/10 text-orange-500 hover:bg-orange-500 hover:text-white border border-orange-500/25"
                       }`}
                   >
                     <Zap className="h-3.5 w-3.5" />
@@ -348,8 +348,8 @@ export const ChatPage: React.FC = () => {
                     >
                       <div
                         className={`max-w-[75%] sm:max-w-[60%] p-3 shadow-sm text-left ${isMe
-                            ? "bg-sky-500 text-white rounded-2xl rounded-tr-none"
-                            : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-2xl rounded-tl-none border border-slate-200/30 dark:border-slate-700/30"
+                          ? "bg-sky-500 text-white rounded-2xl rounded-tr-none"
+                          : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-2xl rounded-tl-none border border-slate-200/30 dark:border-slate-700/30"
                           }`}
                       >
                         <p className="text-xs leading-relaxed whitespace-pre-wrap">{msg.text}</p>

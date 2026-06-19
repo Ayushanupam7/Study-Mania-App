@@ -164,14 +164,13 @@ export const ChatPage: React.FC = () => {
     <div className="flex h-full w-full bg-white dark:bg-slate-900 overflow-hidden">
       {/* 1. Left Sidebar: Friends List (Hidden on mobile if a chat is active) */}
       <div
-        className={`w-full md:w-80 lg:w-96 border-r border-slate-200/60 dark:border-slate-800/60 flex flex-col shrink-0 ${
-          activeChatFriend ? "hidden md:flex" : "flex"
-        }`}
+        className={`w-full md:w-80 lg:w-96 border-r border-slate-200/60 dark:border-slate-800/60 flex flex-col shrink-0 ${activeChatFriend ? "hidden md:flex" : "flex"
+          }`}
       >
         {/* Sidebar Header */}
         <div className="p-4 border-b border-slate-200/60 dark:border-slate-800/60 space-y-3 bg-slate-50/50 dark:bg-slate-950/20">
           <h2 className="text-lg font-black tracking-tight text-slate-800 dark:text-white flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-sky-500" />
+            {/* <MessageSquare className="h-5 w-5 text-sky-500" /> */}
             <span>Study Partners Chat</span>
           </h2>
           {/* Search Bar */}
@@ -204,11 +203,10 @@ export const ChatPage: React.FC = () => {
                 <div
                   key={friend.id}
                   onClick={() => setActiveChatFriend(friend)}
-                  className={`p-3.5 flex gap-3 cursor-pointer transition-all ${
-                    isActive
+                  className={`p-3.5 flex gap-3 cursor-pointer transition-all ${isActive
                       ? "bg-sky-50/40 dark:bg-slate-800/40 border-l-4 border-sky-500"
                       : "hover:bg-slate-50/50 dark:hover:bg-slate-800/10 border-l-4 border-transparent"
-                  }`}
+                    }`}
                 >
                   {/* Avatar Container with status dot */}
                   <div className="relative shrink-0">
@@ -317,11 +315,10 @@ export const ChatPage: React.FC = () => {
                   <button
                     onClick={handleSendCheer}
                     disabled={!!cheerSent}
-                    className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-all ${
-                      cheerSent
+                    className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-all ${cheerSent
                         ? "bg-emerald-500 text-white"
                         : "bg-orange-500/10 text-orange-500 hover:bg-orange-500 hover:text-white border border-orange-500/25"
-                    }`}
+                      }`}
                   >
                     <Zap className="h-3.5 w-3.5" />
                     <span>{cheerSent ? "Energy Sent!" : "Cheer Energy"}</span>
@@ -356,17 +353,15 @@ export const ChatPage: React.FC = () => {
                       className={`flex w-full ${isMe ? "justify-end" : "justify-start"}`}
                     >
                       <div
-                        className={`max-w-[75%] sm:max-w-[60%] p-3 shadow-sm text-left ${
-                          isMe
+                        className={`max-w-[75%] sm:max-w-[60%] p-3 shadow-sm text-left ${isMe
                             ? "bg-sky-500 text-white rounded-2xl rounded-tr-none"
                             : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-2xl rounded-tl-none border border-slate-200/30 dark:border-slate-700/30"
-                        }`}
+                          }`}
                       >
                         <p className="text-xs leading-relaxed whitespace-pre-wrap">{msg.text}</p>
                         <span
-                          className={`text-[8px] font-bold text-right block mt-1 ${
-                            isMe ? "text-sky-100" : "text-slate-400 dark:text-slate-500"
-                          }`}
+                          className={`text-[8px] font-bold text-right block mt-1 ${isMe ? "text-sky-100" : "text-slate-400 dark:text-slate-500"
+                            }`}
                         >
                           {formatTime(msg.timestamp)}
                         </span>

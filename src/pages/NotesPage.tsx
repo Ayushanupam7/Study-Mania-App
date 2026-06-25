@@ -1438,17 +1438,19 @@ const NotesPage: React.FC = () => {
                   </button>
 
                   {/* Floating Note Toggle */}
-                  <button
-                    onClick={togglePiP}
-                    className={`p-2 rounded-xl border transition-colors cursor-pointer ${
-                      pipWindow 
-                        ? "bg-sky-500/10 border-sky-500/30 text-sky-500" 
-                        : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                    }`}
-                    title={pipWindow ? "Close Floating Note" : "Open as Floating Sticky Note"}
-                  >
-                    <ExternalLink className="h-4.5 w-4.5" />
-                  </button>
+                  {('documentPictureInPicture' in window) && (
+                    <button
+                      onClick={togglePiP}
+                      className={`p-2 rounded-xl border transition-colors cursor-pointer ${
+                        pipWindow 
+                          ? "bg-sky-500/10 border-sky-500/30 text-sky-500" 
+                          : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      }`}
+                      title={pipWindow ? "Close Floating Note" : "Open as Floating Sticky Note"}
+                    >
+                      <ExternalLink className="h-4.5 w-4.5" />
+                    </button>
+                  )}
 
                   {/* Delete note */}
                   <button

@@ -435,22 +435,24 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
         </div>
 
         {/* Floating Bubble Settings */}
-        <div className="w-full max-w-[280px] pt-0.5 space-y-1.5">
-          <span className="text-[9px] font-extrabold text-slate-400 dark:text-slate-500 block uppercase tracking-wider">
-            Floating Bubble Settings
-          </span>
-          <div className="flex flex-col gap-1.5 bg-slate-50 dark:bg-slate-900/30 p-2.5 rounded-xl border border-slate-100 dark:border-slate-900/20">
-            <label className="flex items-center gap-2 text-[10px] font-bold text-slate-600 dark:text-slate-300 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={pipHourMinuteOnly}
-                onChange={e => setPipHourMinuteOnly(e.target.checked)}
-                className="rounded text-indigo-600 focus:ring-indigo-500/30 border-slate-300 dark:border-slate-700 h-3.5 w-3.5"
-              />
-              <span>Show Hour/Minute display only</span>
-            </label>
+        {('documentPictureInPicture' in window) && (
+          <div className="w-full max-w-[280px] pt-0.5 space-y-1.5">
+            <span className="text-[9px] font-extrabold text-slate-400 dark:text-slate-500 block uppercase tracking-wider">
+              Floating Bubble Settings
+            </span>
+            <div className="flex flex-col gap-1.5 bg-slate-50 dark:bg-slate-900/30 p-2.5 rounded-xl border border-slate-100 dark:border-slate-900/20">
+              <label className="flex items-center gap-2 text-[10px] font-bold text-slate-600 dark:text-slate-300 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={pipHourMinuteOnly}
+                  onChange={e => setPipHourMinuteOnly(e.target.checked)}
+                  className="rounded text-indigo-600 focus:ring-indigo-500/30 border-slate-300 dark:border-slate-700 h-3.5 w-3.5"
+                />
+                <span>Show Hour/Minute display only</span>
+              </label>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Playback Controls */}
         <div className="flex items-center gap-4">
@@ -494,16 +496,18 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
             </button>
           )}
 
-          <button
-            onClick={togglePiP}
-            className={`p-3.5 rounded-full border transition-all cursor-pointer ${pipWindow
-              ? "bg-indigo-500/10 border-indigo-500/30 text-indigo-500 dark:text-indigo-400"
-              : "border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
-              }`}
-            title={pipWindow ? "Close Floating Bubble" : "Floating Overlay Bubble"}
-          >
-            <ExternalLink className="h-5 w-5" />
-          </button>
+          {('documentPictureInPicture' in window) && (
+            <button
+              onClick={togglePiP}
+              className={`p-3.5 rounded-full border transition-all cursor-pointer ${pipWindow
+                ? "bg-indigo-500/10 border-indigo-500/30 text-indigo-500 dark:text-indigo-400"
+                : "border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
+                }`}
+              title={pipWindow ? "Close Floating Bubble" : "Floating Overlay Bubble"}
+            >
+              <ExternalLink className="h-5 w-5" />
+            </button>
+          )}
         </div>
 
         {/* Timer Stats overview */}

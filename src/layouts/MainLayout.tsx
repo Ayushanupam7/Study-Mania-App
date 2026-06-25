@@ -484,10 +484,52 @@ const MainLayout: React.FC = () => {
       }
     });
 
+    // 5. Listen for user document (real-time XP, level, study stats sync)
+    const unsubUser = onSnapshot(doc(db, "users", userUid), (snapshot) => {
+      if (snapshot.exists()) {
+        const uData = snapshot.data();
+        const d = new Date();
+        const resetHour = uData.dailyResetHour ?? 4;
+        if (d.getHours() < resetHour) {
+          d.setDate(d.getDate() - 1);
+        }
+        const currentStudyDay = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}-${d.getDate().toString().padStart(2, "0")}`;
+
+        const dbLastStudyDate = uData.lastStudyDate || "";
+        const isNewDay = dbLastStudyDate !== currentStudyDay;
+
+        const nextSessionCount = isNewDay ? 0 : (uData.sessionCount || 0);
+        const nextTodayMinutes = isNewDay ? 0 : (uData.todayMinutes || 0);
+
+        const cleanUser = {
+          name: uData.name || "Scholar",
+          email: uData.email || "",
+          avatar: uData.avatar || "",
+          xp: uData.xp !== undefined ? uData.xp : 0,
+          level: uData.level !== undefined ? uData.level : 1,
+          title: uData.title || "Focus Rookie",
+          major: uData.major || "Computer Science",
+          bio: uData.bio || "Leveling up my study game one Pomodoro at a time.",
+        };
+
+        useStore.setState({
+          user: cleanUser,
+          sessionCount: nextSessionCount,
+          todayMinutes: nextTodayMinutes,
+          totalStudyTime: uData.totalStudyTime || 0,
+          studyHistory: uData.studyHistory || {},
+          lastStudyDate: currentStudyDay,
+          dailyResetHour: uData.dailyResetHour ?? 4,
+          dailyGoalHours: uData.dailyGoalHours ?? 8,
+        });
+      }
+    }, (err) => console.error("Error syncing user document:", err));
+
     return () => {
       unsubRequests();
       unsubXp();
       unsubCheers();
+      unsubUser();
     };
   }, [userUid]);
 

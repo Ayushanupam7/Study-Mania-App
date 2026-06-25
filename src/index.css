@@ -56,6 +56,14 @@
   @apply bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-pink-500 to-rose-500 dark:from-purple-300 dark:via-pink-400 dark:to-rose-400;
 }
 
+@utility scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* Custom scrollbars */
 ::-webkit-scrollbar {
   width: 6px;

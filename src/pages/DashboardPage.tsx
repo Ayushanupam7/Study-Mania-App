@@ -30,6 +30,8 @@ const DashboardPage: React.FC = () => {
   const todayMinutes = useStore(state => state.todayMinutes);
   const sessionCount = useStore(state => state.sessionCount);
   const updateTodo = useStore(state => state.updateTodo);
+  const updateStickyNote = useStore(state => state.updateStickyNote);
+  const stickyNotes = useStore(state => state.stickyNotes) || [];
   const checkDailyReset = useStore(state => state.checkDailyReset);
   const today = new Date().toISOString().split("T")[0];
 
@@ -46,7 +48,6 @@ const DashboardPage: React.FC = () => {
   };
 
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [todoFilter, setTodoFilter] = useState<"all" | "today">("today");
 
   const firstName = user.name ? user.name.split(" ")[0] : "Scholar";
   const quotes = React.useMemo(() => [
@@ -216,19 +217,31 @@ const DashboardPage: React.FC = () => {
   const dayString = currentTime.toLocaleDateString([], { weekday: 'long' });
   const dateString = currentTime.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
 
-  const pendingTodos = todos.filter(t => !t.completed);
   const todayDate = new Date(today);
-  const filteredTodos = todoFilter === "today"
-    ? pendingTodos.filter(t => {
-      if (!t.dueDate) return false;
-      if (t.startDate) {
-        const start = new Date(t.startDate);
-        const end = new Date(t.dueDate);
-        return todayDate >= start && todayDate <= end;
-      }
-      return t.dueDate === today;
-    })
-    : pendingTodos;
+  const todayTasks = todos.filter(t => !t.completed).filter(t => {
+    if (!t.dueDate) return false;
+    if (t.startDate) {
+      const start = new Date(t.startDate);
+      const end = new Date(t.dueDate);
+      return todayDate >= start && todayDate <= end;
+    }
+    return t.dueDate === today;
+  });
+
+  const todayStickyNotes = stickyNotes.filter(n => !n.completed).filter(note => {
+    const type = note.targetDateType || "today";
+    if (type === "daily") return true;
+    if (type === "today") {
+      return !note.targetDate || note.targetDate === today;
+    }
+    if (type === "specific") {
+      return note.targetDate === today;
+    }
+    return true;
+  });
+
+  const pendingTodosCount = todos.filter(t => !t.completed).length + stickyNotes.filter(n => !n.completed).length;
+
   const activeHabits = habits.length;
   const closestCountdown = countdowns.length > 0
     ? [...countdowns].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0]
@@ -374,7 +387,7 @@ const DashboardPage: React.FC = () => {
             <span className="text-[10px] sm:text-xs font-bold text-sky-500">Tasks</span>
           </div>
           <div>
-            <div className="text-2xl sm:text-3xl font-extrabold">{pendingTodos.length}</div>
+            <div className="text-2xl sm:text-3xl font-extrabold">{pendingTodosCount}</div>
             <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Remaining items</div>
           </div>
         </Link>
@@ -445,91 +458,111 @@ const DashboardPage: React.FC = () => {
         variants={itemVariants}
         className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8"
       >
-        {/* Next Up (Task Panel) */}
+        {/* Today's Tasks & Notes (Task Panel) */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-3">
             <h3 className="text-lg sm:text-xl font-extrabold flex items-center gap-2 text-slate-800 dark:text-slate-200">
               <CheckSquare className="h-5 w-5 text-sky-500" />
-              <span>Next Up Tasks</span>
+              <span>Today's Tasks</span>
+              <span className="text-[10px] bg-slate-200 dark:bg-slate-800 text-slate-500 px-2 py-0.5 rounded-full font-bold">
+                {todayTasks.length + todayStickyNotes.length}
+              </span>
             </h3>
-            <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
-              {/* Filter Toggle */}
-              <div className="inline-flex p-0.5 rounded-xl bg-slate-200/50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50 shrink-0">
-                <button
-                  onClick={() => setTodoFilter("all")}
-                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${todoFilter === "all"
-                    ? "bg-white dark:bg-slate-800 text-sky-500 dark:text-white shadow-sm"
-                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
-                    }`}
-                >
-                  All
-                </button>
-                <button
-                  onClick={() => setTodoFilter("today")}
-                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${todoFilter === "today"
-                    ? "bg-white dark:bg-slate-800 text-sky-500 dark:text-white shadow-sm"
-                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
-                    }`}
-                >
-                  Today
-                </button>
-              </div>
-
-              <Link
-                to="/todos"
-                className="text-xs sm:text-sm font-semibold text-sky-500 hover:text-sky-600 flex items-center gap-1 hover:underline shrink-0"
-              >
-                <span>View all</span>
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
+            <Link
+              to="/todos"
+              className="text-xs sm:text-sm font-semibold text-sky-500 hover:text-sky-600 flex items-center gap-1 hover:underline shrink-0"
+            >
+              <span>View all</span>
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
 
-          <div className="space-y-3">
-            {filteredTodos.length === 0 ? (
+          <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1 custom-scrollbar">
+            {todayTasks.length === 0 && todayStickyNotes.length === 0 ? (
               <div className="glass-card p-8 text-center text-gray-500 dark:text-gray-400 rounded-2xl text-xs sm:text-sm">
-                {todoFilter === "today"
-                  ? "🌅 No tasks due today. Have a productive day!"
-                  : "🎉 No pending tasks! You are all caught up."}
+                🌅 No tasks or sticky notes today. Have a productive day!
               </div>
             ) : (
-              filteredTodos.slice(0, 3).map(todo => (
-                <div
-                  key={todo.id}
-                  className="glass-card p-3 sm:p-4 rounded-xl flex items-center justify-between border-l-4 border-l-sky-500 hover:scale-[1.01] transition-transform duration-200 gap-3"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <button
-                      onClick={() => updateTodo(todo.id, { completed: !todo.completed })}
-                      className={`h-5 w-5 rounded-lg border flex items-center justify-center transition-all shrink-0 cursor-pointer ${todo.completed
-                        ? "bg-sky-500 border-sky-500 text-white"
-                        : "border-slate-300 dark:border-slate-700 hover:border-sky-500"
+              <>
+                {/* Standard Tasks */}
+                {todayTasks.map(todo => (
+                  <div
+                    key={todo.id}
+                    className="glass-card p-3 sm:p-4 rounded-xl flex items-center justify-between border-l-4 border-l-sky-500 hover:scale-[1.01] transition-transform duration-200 gap-3"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <button
+                        onClick={() => updateTodo(todo.id, { completed: !todo.completed })}
+                        className={`h-5 w-5 rounded-lg border flex items-center justify-center transition-all shrink-0 cursor-pointer ${
+                          todo.completed
+                            ? "bg-sky-500 border-sky-500 text-white"
+                            : "border-slate-350 dark:border-slate-700 bg-white/40 dark:bg-slate-900/40 hover:border-sky-500"
                         }`}
-                    >
-                      {todo.completed && <CheckCircle2 className="h-4 w-4" />}
-                    </button>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className={`h-2 w-2 rounded-full shrink-0 ${todo.priority === "high" ? "bg-red-500" : todo.priority === "medium" ? "bg-orange-400" : "bg-green-400"
+                      >
+                        {todo.completed && <CheckCircle2 className="h-4 w-4" />}
+                      </button>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className={`h-2 w-2 rounded-full shrink-0 ${
+                            todo.priority === "high" ? "bg-red-500" : todo.priority === "medium" ? "bg-orange-400" : "bg-green-400"
                           }`} />
-                        <span className="font-semibold text-xs sm:text-sm truncate text-slate-800 dark:text-slate-300">{todo.title}</span>
+                          <span className="font-semibold text-xs sm:text-sm truncate text-slate-800 dark:text-slate-300">{todo.title}</span>
+                        </div>
+                        {todo.dueDate && (
+                          <div className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400 mt-1 pl-4 flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            <span className="truncate">
+                              {todo.startDate ? `${todo.startDate} to ` : ""}
+                              {todo.dueDate}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                      {todo.dueDate && (
-                        <div className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400 mt-1 pl-4 flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          <span className="truncate">
-                            {todo.startDate ? `${todo.startDate} to ` : ""}
-                            {todo.dueDate}
+                    </div>
+                    <span className="text-[9px] sm:text-xs px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap shrink-0 self-start mt-0.5">
+                      {todo.category || "General"}
+                    </span>
+                  </div>
+                ))}
+
+                {/* Sticky Notes */}
+                {todayStickyNotes.map(note => (
+                  <div
+                    key={note.id}
+                    className="glass-card p-3 sm:p-4 rounded-xl flex items-center justify-between border-l-4 border-l-amber-500 hover:scale-[1.01] transition-transform duration-200 gap-3"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <button
+                        onClick={() => updateStickyNote(note.id, { completed: !note.completed })}
+                        className={`h-5 w-5 rounded-lg border flex items-center justify-center transition-all shrink-0 cursor-pointer ${
+                          note.completed
+                            ? "bg-amber-500 border-amber-500 text-white"
+                            : "border-slate-350 dark:border-slate-700 bg-white/40 dark:bg-slate-900/40 hover:border-amber-500"
+                        }`}
+                      >
+                        {note.completed && <CheckCircle2 className="h-4 w-4" />}
+                      </button>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="h-2 w-2 rounded-full bg-amber-400 shrink-0" />
+                          <span className="font-semibold text-xs sm:text-sm truncate text-slate-800 dark:text-slate-300">
+                            {note.content.trim() || <span className="italic opacity-60">Empty Sticky Note</span>}
                           </span>
                         </div>
-                      )}
+                      </div>
                     </div>
+                    <span className={`text-[9px] sm:text-xs px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full font-medium whitespace-nowrap shrink-0 self-start mt-0.5 ${
+                      note.color === "yellow" ? "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300" :
+                      note.color === "pink" ? "bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300" :
+                      note.color === "blue" ? "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300" :
+                      note.color === "green" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300" :
+                      "bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300"
+                    }`}>
+                      Sticky
+                    </span>
                   </div>
-                  <span className="text-[9px] sm:text-xs px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap shrink-0 self-start mt-0.5">
-                    {todo.category || "General"}
-                  </span>
-                </div>
-              ))
+                ))}
+              </>
             )}
           </div>
         </div>

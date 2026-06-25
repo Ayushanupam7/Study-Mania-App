@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Link, NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
+import { createPortal } from "react-dom";
 import { useStore } from "../store/store";
+import type { StickyNote } from "../store/store";
 import { motion, AnimatePresence } from "framer-motion";
 import { db } from "../firebase";
 import { doc, collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
@@ -23,7 +25,12 @@ import {
   Bell,
   UserPlus,
   MessageSquare,
-  UserCircle2
+  UserCircle2,
+  Pin,
+  Trash2,
+  Check,
+  ExternalLink,
+  Minimize2
 } from "lucide-react";
 
 const navItems = [
@@ -262,7 +269,71 @@ const MainLayout: React.FC = () => {
   const friends = useStore(state => state.friends);
   const activeChatFriend = useStore(state => state.activeChatFriend);
   const setActiveChatFriend = useStore(state => state.setActiveChatFriend);
+  const stickyNotes = useStore(state => state.stickyNotes) || [];
+  const updateStickyNote = useStore(state => state.updateStickyNote);
+  const deleteStickyNote = useStore(state => state.deleteStickyNote);
   const navigate = useNavigate();
+
+  const [pipWindow, setPipWindow] = useState<Window | null>(null);
+  const isPipSupported = typeof window !== "undefined" && "documentPictureInPicture" in (window as any);
+
+  // Close PIP window when component unmounts
+  useEffect(() => {
+    return () => {
+      if (pipWindow) {
+        pipWindow.close();
+      }
+    };
+  }, [pipWindow]);
+
+  // Synchronize dark/light mode classes to PIP window
+  useEffect(() => {
+    if (pipWindow) {
+      if (darkMode) {
+        pipWindow.document.documentElement.classList.add("dark");
+      } else {
+        pipWindow.document.documentElement.classList.remove("dark");
+      }
+    }
+  }, [darkMode, pipWindow]);
+
+  const togglePip = async () => {
+    if (pipWindow) {
+      pipWindow.close();
+      setPipWindow(null);
+      return;
+    }
+
+    try {
+      const w = await (window as any).documentPictureInPicture.requestWindow({
+        width: 310,
+        height: 380,
+      });
+
+      w.document.title = "Study Mania - Pinned Notes";
+      
+      // Copy all style tags & links
+      document.querySelectorAll("style, link[rel='stylesheet']").forEach((styleEl) => {
+        w.document.head.appendChild(styleEl.cloneNode(true));
+      });
+
+      // Sync dark mode class
+      if (document.documentElement.classList.contains("dark")) {
+        w.document.documentElement.classList.add("dark");
+      }
+      
+      w.document.body.className = "p-4 overflow-y-auto h-full w-full select-text bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 custom-scrollbar";
+
+      // Listen for window close
+      w.addEventListener("pagehide", () => {
+        setPipWindow(null);
+      });
+
+      setPipWindow(w);
+    } catch (err) {
+      console.error("Document Picture-in-Picture error:", err);
+    }
+  };
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [lastChecked, setLastChecked] = useState<number>(() => {
@@ -861,11 +932,347 @@ const MainLayout: React.FC = () => {
                 <span className="text-[10px]">Menu</span>
               </button> */}
             </nav>
+
+            {/* Pinned Sticky Notes Container */}
+            <div className="fixed inset-0 z-[9999] pointer-events-none select-none overflow-hidden my-4">
+              {/* Pop out to desktop action (Document PiP) */}
+              {isPipSupported && stickyNotes.some(note => note.pinned) && (
+                <button
+                  onClick={togglePip}
+                  className="fixed top-20 right-6 p-2 rounded-xl text-slate-505 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 bg-white/60 dark:bg-slate-900/60 hover:bg-white/80 hover:scale-105 transition-all cursor-pointer shadow-md pointer-events-auto flex items-center gap-1.5 text-xs font-bold border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-md z-[10000]"
+                  title={pipWindow ? "Dock Notes back to App" : "Pop Out to Desktop (Always on Top)"}
+                >
+                  {pipWindow ? <Minimize2 className="h-3.5 w-3.5" /> : <ExternalLink className="h-3.5 w-3.5" />}
+                  <span>{pipWindow ? "Dock Notes" : "Pop Out"}</span>
+                </button>
+              )}
+
+              <AnimatePresence>
+                {!pipWindow && stickyNotes.filter(note => note.pinned).map((note, index) => (
+                  <PinnedCard
+                    key={note.id}
+                    note={note}
+                    index={index}
+                    updateStickyNote={updateStickyNote}
+                    deleteStickyNote={deleteStickyNote}
+                  />
+                ))}
+              </AnimatePresence>
+            </div>
+
+            {/* Document Picture-in-Picture Rendering (Portal) */}
+            {pipWindow && createPortal(
+              <div className="flex flex-col gap-4 w-full h-full select-text p-2">
+                {stickyNotes.filter(note => note.pinned).length === 0 ? (
+                  <div className="text-center text-xs text-slate-500 py-8">
+                    No pinned notes.
+                  </div>
+                ) : (
+                  stickyNotes.filter(note => note.pinned).map(note => (
+                    <div
+                      key={note.id}
+                      className={`p-4 rounded-2xl flex flex-col justify-between shadow-md border w-full h-[150px] transition-all duration-300 ${getStickyColorClasses(
+                        note.color,
+                        note.completed
+                      )}`}
+                    >
+                      {/* Header: checkbox, unpin, delete */}
+                      <div className="flex items-start justify-between gap-3 mb-2 shrink-0">
+                        <button
+                          onClick={() => updateStickyNote(note.id, { completed: !note.completed })}
+                          className={`h-5 w-5 rounded-md border flex items-center justify-center shrink-0 transition-colors cursor-pointer ${
+                            note.completed
+                              ? "bg-slate-500 border-slate-500 text-white"
+                              : "border-slate-300 dark:border-slate-700 bg-white/40 hover:border-slate-450"
+                          }`}
+                        >
+                          {note.completed && <Check className="h-3.5 w-3.5 text-white" />}
+                        </button>
+
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => updateStickyNote(note.id, { pinned: false })}
+                            className="p-1 rounded-lg text-sky-500 bg-sky-500/10 hover:bg-sky-500/20 transition-colors cursor-pointer"
+                            title="Unpin note"
+                          >
+                            <Pin className="h-3.5 w-3.5 fill-sky-500" />
+                          </button>
+                          <button
+                            onClick={() => deleteStickyNote(note.id)}
+                            className="p-1 rounded-lg text-slate-400 hover:text-rose-500 dark:hover:text-rose-450 hover:bg-white/40 transition-colors cursor-pointer"
+                            title="Delete sticky note"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Content area */}
+                      <div className="flex-1 w-full my-1 overflow-hidden">
+                        <textarea
+                          value={note.content}
+                          onChange={e => updateStickyNote(note.id, { content: e.target.value })}
+                          placeholder="Pinned note..."
+                          className={`w-full h-full bg-transparent resize-none border-none outline-none focus:ring-0 p-0 text-xs font-semibold leading-normal custom-scrollbar ${
+                            note.completed
+                              ? "line-through text-slate-455 dark:text-slate-500 font-medium"
+                              : "text-slate-800 dark:text-slate-100"
+                          }`}
+                        />
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>,
+              pipWindow.document.body
+            )}
           </div>
         </div>
       </div>
     </div>
   );
+};
+
+interface PinnedCardProps {
+  note: StickyNote;
+  index: number;
+  updateStickyNote: (id: string, data: Partial<StickyNote>) => void;
+  deleteStickyNote: (id: string) => void;
+}
+
+const PinnedCard: React.FC<PinnedCardProps> = ({ note, index, updateStickyNote, deleteStickyNote }) => {
+  const cardRef = React.useRef<HTMLDivElement>(null);
+
+  // Default dimensions
+  const defaultWidth = note.pinnedWidth ?? 280;
+  const defaultHeight = note.pinnedHeight ?? 160;
+
+  // Stagger down the right side of the screen by default
+  const defaultLeft = note.pinnedX ?? (typeof window !== "undefined" ? window.innerWidth - defaultWidth - 24 : 0);
+  const defaultTop = note.pinnedY ?? (80 + index * 180);
+
+  const [position, setPosition] = useState({ left: defaultLeft, top: defaultTop });
+  const [size, setSize] = useState({ width: defaultWidth, height: defaultHeight });
+
+  // Update local states if props update from db sync
+  useEffect(() => {
+    if (note.pinnedX !== undefined && note.pinnedY !== undefined) {
+      setPosition({ left: note.pinnedX, top: note.pinnedY });
+    }
+    if (note.pinnedWidth !== undefined && note.pinnedHeight !== undefined) {
+      setSize({ width: note.pinnedWidth, height: note.pinnedHeight });
+    }
+  }, [note.pinnedX, note.pinnedY, note.pinnedWidth, note.pinnedHeight]);
+
+  // Handle offscreen correction when screen resizes
+  useEffect(() => {
+    const handleResize = () => {
+      const maxLeft = window.innerWidth - size.width - 10;
+      const maxTop = window.innerHeight - size.height - 10;
+      const newLeft = Math.max(10, Math.min(maxLeft, position.left));
+      const newTop = Math.max(10, Math.min(maxTop, position.top));
+      if (newLeft !== position.left || newTop !== position.top) {
+        setPosition({ left: newLeft, top: newTop });
+        updateStickyNote(note.id, { pinnedX: newLeft, pinnedY: newTop });
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [position, size, note.id]);
+
+  const handleDragStart = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return; // Left mouse button only
+    if ((e.target as HTMLElement).closest("button") || (e.target as HTMLElement).closest("textarea")) return;
+
+    const card = cardRef.current;
+    if (!card) return;
+
+    const target = e.currentTarget;
+    target.setPointerCapture(e.pointerId);
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startLeft = position.left;
+    const startTop = position.top;
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const dx = moveEvent.clientX - startX;
+      const dy = moveEvent.clientY - startY;
+
+      // Keep inside screen viewport
+      const maxLeft = window.innerWidth - size.width - 10;
+      const maxTop = window.innerHeight - size.height - 10;
+      
+      const newLeft = Math.max(10, Math.min(maxLeft, startLeft + dx));
+      const newTop = Math.max(10, Math.min(maxTop, startTop + dy));
+
+      card.style.left = `${newLeft}px`;
+      card.style.top = `${newTop}px`;
+    };
+
+    const handlePointerUp = (upEvent: PointerEvent) => {
+      target.releasePointerCapture(upEvent.pointerId);
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+
+      const finalLeft = parseInt(card.style.left) || startLeft;
+      const finalTop = parseInt(card.style.top) || startTop;
+
+      setPosition({ left: finalLeft, top: finalTop });
+      updateStickyNote(note.id, { pinnedX: finalLeft, pinnedY: finalTop });
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+  };
+
+  const handleResizeStart = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+
+    const card = cardRef.current;
+    if (!card) return;
+
+    const target = e.currentTarget;
+    target.setPointerCapture(e.pointerId);
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startWidth = size.width;
+    const startHeight = size.height;
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const dx = moveEvent.clientX - startX;
+      const dy = moveEvent.clientY - startY;
+
+      const newWidth = Math.max(200, Math.min(800, startWidth + dx));
+      const newHeight = Math.max(120, Math.min(600, startHeight + dy));
+
+      card.style.width = `${newWidth}px`;
+      card.style.height = `${newHeight}px`;
+    };
+
+    const handlePointerUp = (upEvent: PointerEvent) => {
+      target.releasePointerCapture(upEvent.pointerId);
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+
+      const finalWidth = parseInt(card.style.width) || startWidth;
+      const finalHeight = parseInt(card.style.height) || startHeight;
+
+      setSize({ width: finalWidth, height: finalHeight });
+      updateStickyNote(note.id, { pinnedWidth: finalWidth, pinnedHeight: finalHeight });
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+  };
+
+  return (
+    <motion.div
+      ref={cardRef}
+      layout
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ type: "spring", stiffness: 450, damping: 25 }}
+      style={{
+        position: "fixed",
+        left: position.left,
+        top: position.top,
+        width: size.width,
+        height: size.height,
+      }}
+      className={`p-4 rounded-2xl flex flex-col justify-between shadow-2xl border pointer-events-auto select-text relative transition-colors duration-300 ${getStickyColorClasses(
+        note.color,
+        note.completed
+      )}`}
+    >
+      {/* Top Handle (Drag Area) */}
+      <div
+        onPointerDown={handleDragStart}
+        className="flex items-start justify-between gap-3 mb-2 shrink-0 cursor-move select-none active:cursor-grabbing pb-1.5 border-b border-black/5 dark:border-white/5"
+      >
+        <button
+          onClick={() => updateStickyNote(note.id, { completed: !note.completed })}
+          className={`h-5 w-5 rounded-md border flex items-center justify-center shrink-0 transition-colors cursor-pointer ${
+            note.completed
+              ? "bg-slate-500 border-slate-500 text-white"
+              : "border-slate-300 dark:border-slate-700 bg-white/40 hover:border-slate-455"
+          }`}
+        >
+          {note.completed && <Check className="h-3.5 w-3.5 text-white" />}
+        </button>
+
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => updateStickyNote(note.id, { pinned: false })}
+            className="p-1 rounded-lg text-sky-500 bg-sky-500/10 hover:bg-sky-500/20 transition-colors cursor-pointer"
+            title="Unpin note"
+          >
+            <Pin className="h-3.5 w-3.5 fill-sky-500" />
+          </button>
+          <button
+            onClick={() => deleteStickyNote(note.id)}
+            className="p-1 rounded-lg text-slate-400 hover:text-rose-500 dark:hover:text-rose-450 hover:bg-white/40 transition-colors cursor-pointer"
+            title="Delete sticky note"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 w-full my-1 overflow-hidden">
+        <textarea
+          value={note.content}
+          onChange={e => updateStickyNote(note.id, { content: e.target.value })}
+          placeholder="Pinned note..."
+          className={`w-full h-full bg-transparent resize-none border-none outline-none focus:ring-0 p-0 text-xs font-semibold leading-normal custom-scrollbar ${
+            note.completed
+              ? "line-through text-slate-455 dark:text-slate-500 font-medium"
+              : "text-slate-800 dark:text-slate-100"
+          }`}
+        />
+      </div>
+
+      {/* Resize Handle (Bottom-Right) */}
+      <div
+        onPointerDown={handleResizeStart}
+        className="absolute bottom-1.5 right-1.5 w-4 h-4 cursor-se-resize flex items-end justify-end p-0.5 select-none"
+        title="Drag to resize note"
+      >
+        <svg
+          className="w-2.5 h-2.5 text-slate-400 dark:text-slate-500 opacity-60 hover:opacity-100 transition-opacity"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          viewBox="0 0 24 24"
+        >
+          <line x1="20" y1="4" x2="4" y2="20" />
+          <line x1="20" y1="12" x2="12" y2="20" />
+        </svg>
+      </div>
+    </motion.div>
+  );
+};
+
+const getStickyColorClasses = (color: string, completed: boolean) => {
+  if (completed) {
+    return "bg-slate-100/80 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 opacity-60";
+  }
+  switch (color) {
+    case "pink":
+      return "bg-rose-50 dark:bg-rose-950/20 text-rose-900 dark:text-rose-100 border-rose-200/40 dark:border-rose-900/30";
+    case "blue":
+      return "bg-sky-50 dark:bg-sky-950/20 text-sky-900 dark:text-sky-100 border-sky-200/40 dark:border-sky-900/30";
+    case "green":
+      return "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-100 border-emerald-200/40 dark:border-emerald-900/30";
+    case "purple":
+      return "bg-purple-50 dark:bg-purple-950/20 text-purple-900 dark:text-purple-100 border-purple-200/40 dark:border-purple-900/30";
+    default: // yellow
+      return "bg-amber-50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-100 border-amber-200/40 dark:border-amber-900/30";
+  }
 };
 
 export default MainLayout;

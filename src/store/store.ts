@@ -66,6 +66,21 @@ export interface Note {
   drawingData?: string;
 }
 
+export interface StickyNote {
+  id: string;
+  content: string;
+  completed: boolean;
+  color: "yellow" | "pink" | "blue" | "green" | "purple";
+  createdAt: string;
+  pinned?: boolean;
+  pinnedX?: number;
+  pinnedY?: number;
+  pinnedWidth?: number;
+  pinnedHeight?: number;
+  targetDateType?: "today" | "daily" | "specific";
+  targetDate?: string;
+}
+
 export interface PomodoroSettings {
   workTime: number; // in minutes
   shortBreak: number;
@@ -141,6 +156,13 @@ interface NoteState {
   deleteNote: (id: string) => void;
 }
 
+interface StickyNoteState {
+  stickyNotes: StickyNote[];
+  addStickyNote: (note: StickyNote) => void;
+  updateStickyNote: (id: string, data: Partial<StickyNote>) => void;
+  deleteStickyNote: (id: string) => void;
+}
+
 interface PomodoroState {
   workTime: number;
   shortBreak: number;
@@ -164,6 +186,7 @@ export type StoreState = UIState &
   HabitState &
   CountdownState &
   NoteState &
+  StickyNoteState &
   PomodoroState;
 
 const defaultUser: UserProfile = {
@@ -361,6 +384,7 @@ export const useStore = create<StoreState>()(
               habits: defaultHabits,
               countdowns: defaultCountdowns,
               notes: defaultNotes,
+              stickyNotes: [],
               friends: [],
               sessionCount: 0,
               todayMinutes: 0,
@@ -399,7 +423,7 @@ export const useStore = create<StoreState>()(
               }
 
               // 2. Delete subcollections of the current user
-              const collectionsToDelete = ["todos", "habits", "notes", "countdowns", "friends"];
+              const collectionsToDelete = ["todos", "habits", "notes", "countdowns", "friends", "sticky_notes"];
               for (const colName of collectionsToDelete) {
                 const colSnap = await getDocs(collection(db, "users", uid, colName)).catch(() => null);
                 if (colSnap) {
@@ -435,6 +459,7 @@ export const useStore = create<StoreState>()(
               habits: defaultHabits,
               countdowns: defaultCountdowns,
               notes: defaultNotes,
+              stickyNotes: [],
               friends: [],
               sessionCount: 0,
               todayMinutes: 0,
@@ -526,6 +551,10 @@ export const useStore = create<StoreState>()(
             const countdowns = cdsSnap.docs.map(doc => doc.data() as Countdown);
             if (countdowns.length > 0) set({ countdowns });
 
+            const stickySnap = await getDocs(collection(db, "users", uid, "sticky_notes"));
+            const stickyNotes = stickySnap.docs.map(doc => doc.data() as StickyNote);
+            if (stickyNotes.length > 0) set({ stickyNotes });
+
             const friendsSnap = await getDocs(collection(db, "users", uid, "friends"));
             const friendsList = friendsSnap.docs.map(doc => doc.data() as any as Friend);
             let dbFriends: Friend[] = [];
@@ -593,6 +622,34 @@ export const useStore = create<StoreState>()(
               deleteDoc(doc(db, "users", uid, "todos", id)).catch(e => console.error("Firestore deleteTodo error:", e));
             }
             return { todos: state.todos.filter(t => t.id !== id) };
+          }),
+
+        // Sticky Notes Slice
+        stickyNotes: [],
+        addStickyNote: note => {
+          set(state => ({ stickyNotes: [note, ...state.stickyNotes] }));
+          const uid = get().userUid;
+          if (uid) {
+            setDoc(doc(db, "users", uid, "sticky_notes", note.id), note).catch(e => console.error("Firestore addStickyNote error:", e));
+          }
+        },
+        updateStickyNote: (id, data) =>
+          set(state => {
+            const updatedNotes = state.stickyNotes.map(n => (n.id === id ? { ...n, ...data } : n));
+            const updatedNote = updatedNotes.find(n => n.id === id);
+            const uid = state.userUid;
+            if (uid && updatedNote) {
+              setDoc(doc(db, "users", uid, "sticky_notes", id), updatedNote, { merge: true }).catch(e => console.error("Firestore updateStickyNote error:", e));
+            }
+            return { stickyNotes: updatedNotes };
+          }),
+        deleteStickyNote: id =>
+          set(state => {
+            const uid = state.userUid;
+            if (uid) {
+              deleteDoc(doc(db, "users", uid, "sticky_notes", id)).catch(e => console.error("Firestore deleteStickyNote error:", e));
+            }
+            return { stickyNotes: state.stickyNotes.filter(n => n.id !== id) };
           }),
 
         // Habit Slice

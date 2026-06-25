@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { useStore } from "../store/store";
@@ -62,6 +62,9 @@ interface SidebarContentProps {
   toggleTheme: () => void;
   darkMode: boolean;
   logout: () => void;
+  showDot: boolean;
+  lastChecked: number;
+  notifications: any[];
 }
 
 const SidebarContent: React.FC<SidebarContentProps> = ({
@@ -73,7 +76,10 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
   xpPercent,
   toggleTheme,
   darkMode,
-  logout
+  logout,
+  showDot,
+  lastChecked,
+  notifications
 }) => {
   const isExpanded = forceExpanded || desktopExpanded;
   return (
@@ -175,7 +181,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
                 end
                 onClick={() => setMobileMenuOpen(false)}
                 className={({ isActive }) =>
-                  `flex items-center rounded-xl transition-all duration-200 group text-sm font-medium ${isExpanded
+                  `relative flex items-center rounded-xl transition-all duration-200 group text-sm font-medium ${isExpanded
                     ? "w-full px-3.5 py-3 justify-start"
                     : "w-11 h-11 justify-center mx-auto"
                   } ${isActive
@@ -184,22 +190,35 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
                   }`
                 }
               >
-                {({ isActive }) => (
-                  <>
-                    <Icon className={`h-5 w-5 transition-transform duration-200 group-hover:scale-110 shrink-0 ${isActive ? "text-white" : "text-gray-400 group-hover:text-sky-500"}`} />
-                    <motion.span
-                      animate={{
-                        opacity: isExpanded ? 1 : 0,
-                        width: isExpanded ? "auto" : 0,
-                        marginLeft: isExpanded ? 12 : 0
-                      }}
-                      transition={{ duration: 0.2, ease: "easeInOut" }}
-                      className="overflow-hidden whitespace-nowrap"
-                    >
-                      {item.name}
-                    </motion.span>
-                  </>
-                )}
+                {({ isActive }) => {
+                  const isChatsTab = item.path === "/chats";
+                  const showChatDot = isChatsTab && showDot && notifications.some(n => n.type === "chat_message" && n.timestamp > lastChecked);
+                  return (
+                    <>
+                      <Icon className={`h-5 w-5 transition-transform duration-200 group-hover:scale-110 shrink-0 ${isActive ? "text-white" : "text-gray-400 group-hover:text-sky-500"}`} />
+                      <motion.span
+                        animate={{
+                          opacity: isExpanded ? 1 : 0,
+                          width: isExpanded ? "auto" : 0,
+                          marginLeft: isExpanded ? 12 : 0
+                        }}
+                        transition={{ duration: 0.2, ease: "easeInOut" }}
+                        className="overflow-hidden whitespace-nowrap"
+                      >
+                        {item.name}
+                      </motion.span>
+                      {showChatDot && (
+                        <span className={`absolute rounded-full bg-rose-500 border-2 border-white dark:border-slate-900 ${
+                          isExpanded 
+                            ? "right-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 flex items-center justify-center text-[8px] font-black text-white" 
+                            : "right-1.5 top-1.5 h-2.5 w-2.5"
+                        }`}>
+                          {isExpanded && notifications.filter(n => n.type === "chat_message" && n.timestamp > lastChecked).length}
+                        </span>
+                      )}
+                    </>
+                  );
+                }}
               </NavLink>
             </li>
           );
@@ -540,6 +559,48 @@ const MainLayout: React.FC = () => {
   // Compute unread count based on lastChecked timestamp
   const unreadCount = notifications.filter(n => n.timestamp > lastChecked).length;
 
+  const [showDot, setShowDot] = useState(false);
+  const dotTimerRef = useRef<any>(null);
+
+  const startDotTimer = () => {
+    if (dotTimerRef.current) {
+      clearTimeout(dotTimerRef.current);
+    }
+    dotTimerRef.current = setTimeout(() => {
+      setShowDot(false);
+    }, 2 * 60 * 1000); // 2 minutes
+  };
+
+  useEffect(() => {
+    if (unreadCount > 0) {
+      setShowDot(true);
+      startDotTimer();
+    } else {
+      setShowDot(false);
+      if (dotTimerRef.current) {
+        clearTimeout(dotTimerRef.current);
+      }
+    }
+    return () => {
+      if (dotTimerRef.current) {
+        clearTimeout(dotTimerRef.current);
+      }
+    };
+  }, [unreadCount]);
+
+  useEffect(() => {
+    const handleFocus = () => {
+      if (unreadCount > 0) {
+        setShowDot(true);
+        startDotTimer();
+      }
+    };
+    window.addEventListener("focus", handleFocus);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [unreadCount]);
+
   const handleOpenNotifications = () => {
     setShowNotifications(!showNotifications);
     if (!showNotifications) {
@@ -635,7 +696,7 @@ const MainLayout: React.FC = () => {
                 title="Notification History"
               >
                 <Bell className="h-4.5 w-4.5" />
-                {unreadCount > 0 && (
+                {showDot && unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 flex h-4 w-4">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-4 w-4 bg-rose-500 border-2 border-white dark:border-slate-900 text-[8px] font-black text-white items-center justify-center">
@@ -750,6 +811,9 @@ const MainLayout: React.FC = () => {
               toggleTheme={toggleTheme}
               darkMode={darkMode}
               logout={logout}
+              showDot={showDot}
+              lastChecked={lastChecked}
+              notifications={notifications}
             />
           </motion.aside>
 
@@ -790,6 +854,9 @@ const MainLayout: React.FC = () => {
                       toggleTheme={toggleTheme}
                       darkMode={darkMode}
                       logout={logout}
+                      showDot={showDot}
+                      lastChecked={lastChecked}
+                      notifications={notifications}
                     />
                   </div>
                 </motion.aside>

@@ -632,9 +632,20 @@ export const useStore = create<StoreState>()(
           if (uid) {
             setDoc(doc(db, "users", uid, "sticky_notes", note.id), note).catch(e => console.error("Firestore addStickyNote error:", e));
           }
+          get().gainXp(10, "Created Sticky Note");
         },
         updateStickyNote: (id, data) =>
           set(state => {
+            const oldNote = state.stickyNotes.find(n => n.id === id);
+            const isJustCompleted = data.completed === true && oldNote && !oldNote.completed;
+            if (isJustCompleted) {
+              setTimeout(() => {
+                const noteTitle = oldNote?.content?.trim()
+                  ? `"${oldNote.content.substring(0, 25).trim()}${oldNote.content.length > 25 ? "..." : ""}"`
+                  : "Sticky Note";
+                get().gainXp(15, `Completed Sticky: ${noteTitle}`);
+              }, 0);
+            }
             const updatedNotes = state.stickyNotes.map(n => (n.id === id ? { ...n, ...data } : n));
             const updatedNote = updatedNotes.find(n => n.id === id);
             const uid = state.userUid;

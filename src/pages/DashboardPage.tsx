@@ -195,7 +195,7 @@ const DashboardPage: React.FC = () => {
 
       const secondsBase = isStale ? 0 : (c.secondsBase || 0);
       const displayStatus = isStale ? ("offline" as const) : c.status;
-      const totalStudyTimeBase = isStale ? 0 : (c.totalStudyTime || 0);
+      const totalStudyTimeBase = c.totalStudyTime || 0;
 
       return {
         id: c.id,

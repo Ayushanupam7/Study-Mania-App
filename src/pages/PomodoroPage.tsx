@@ -42,6 +42,7 @@ const PomodoroPage: React.FC = () => {
   const checkDailyReset = useStore(state => state.checkDailyReset);
   const dailyResetHour = useStore(state => state.dailyResetHour) ?? 4;
   const dailyGoalHours = useStore(state => state.dailyGoalHours) ?? 8;
+  const darkMode = useStore(state => state.darkMode);
 
   const [timerType, setTimerType] = useState<"pomodoro" | "stopwatch">("pomodoro");
   const [mode, setMode] = useState<"work" | "short" | "long">("work");
@@ -877,7 +878,7 @@ const PomodoroPage: React.FC = () => {
 
       const secondsBase = isStale ? 0 : (c.secondsBase || 0);
       const displayStatus = isStale ? ("offline" as const) : c.status;
-      const totalStudyTimeBase = isStale ? 0 : (c.totalStudyTime || 0);
+      const totalStudyTimeBase = c.totalStudyTime || 0;
 
       return {
         id: c.id,
@@ -1136,6 +1137,7 @@ const PomodoroPage: React.FC = () => {
             customFocusGoal={customFocusGoal}
             format={format}
             formatStudyTime={formatStudyTime}
+            darkMode={darkMode}
           />
 
           <SessionHistory
@@ -1261,7 +1263,7 @@ const PomodoroPage: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex flex-col items-center justify-center p-6 bg-slate-950/98 backdrop-blur-xl"
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center p-6 bg-white/98 dark:bg-slate-950/98 backdrop-blur-xl"
           >
             {/* Ambient breathing light */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -1290,13 +1292,13 @@ const PomodoroPage: React.FC = () => {
                     ? (mode === "work" ? "🧠 DEEP FOCUS ACTIVE" : "☕ REST BREAK ACTIVE")
                     : "⏱️ STOPWATCH STUDY ACTIVE"}
                 </span>
-                <h2 className="text-2xl font-extrabold text-white max-w-md line-clamp-2 px-4 leading-tight">
+                <h2 className="text-2xl font-extrabold text-slate-800 dark:text-white max-w-md line-clamp-2 px-4 leading-tight">
                   {activeTaskId === "custom"
                     ? (customFocusGoal ? `Focusing on: "${customFocusGoal}"` : "Stay focused, you're doing great!")
                     : `Working on: "${todos.find(t => t.id === activeTaskId)?.title}"`}
                 </h2>
                 {arenaComment.trim() && (
-                  <p className="text-slate-400 text-xs mt-1.5 max-w-md italic tracking-wide">
+                  <p className="text-slate-500 dark:text-slate-400 text-xs mt-1.5 max-w-md italic tracking-wide">
                     "{arenaComment.trim()}"
                   </p>
                 )}
@@ -1309,7 +1311,7 @@ const PomodoroPage: React.FC = () => {
                     cx="120"
                     cy="120"
                     r={radius}
-                    className="stroke-slate-900 fill-none"
+                    className="stroke-slate-200 dark:stroke-slate-900 fill-none"
                     strokeWidth="8"
                   />
                   {/* Previous Lap Circle (Overlap) */}
@@ -1349,7 +1351,15 @@ const PomodoroPage: React.FC = () => {
                 <div className="absolute inset-0 flex flex-col items-center justify-center space-y-1">
                   <motion.span
                     // animate={{ scale: isRunning && secondsLeft % 2 === 0 ? 1.03 : 1 }}
-                    className="text-5xl md:text-5xl font-black font-mono tracking-tight text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]"
+                    className={`text-5xl md:text-5xl font-black font-mono tracking-tight bg-clip-text text-transparent bg-gradient-to-r ${
+                      timerType === "pomodoro"
+                        ? mode === "work"
+                          ? "from-emerald-600 to-teal-700 dark:from-emerald-400 dark:to-teal-500"
+                          : mode === "short"
+                            ? "from-sky-600 to-blue-700 dark:from-sky-400 dark:to-blue-500"
+                            : "from-indigo-600 to-purple-700 dark:from-indigo-400 dark:to-purple-500"
+                        : "from-indigo-600 via-purple-600 to-pink-600 dark:from-indigo-400 dark:via-purple-400 dark:to-pink-400"
+                    }`}
                   >
                     {format(secondsLeft)}
                   </motion.span>
@@ -1367,10 +1377,10 @@ const PomodoroPage: React.FC = () => {
                 {/* Music/Sound option */}
                 <button
                   onClick={() => setSoundEnabled(!soundEnabled)}
-                  className="p-3.5 rounded-full bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-all cursor-pointer"
+                  className="p-3.5 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all cursor-pointer"
                   title={soundEnabled ? "Mute alert" : "Enable alert sound"}
                 >
-                  {soundEnabled ? <Volume2 className="h-5 w-5 text-sky-400" /> : <VolumeX className="h-5 w-5" />}
+                  {soundEnabled ? <Volume2 className="h-5 w-5 text-sky-500 dark:text-sky-400" /> : <VolumeX className="h-5 w-5" />}
                 </button>
 
                 {/* Main Play/Pause in Full Screen */}
@@ -1396,7 +1406,7 @@ const PomodoroPage: React.FC = () => {
                       setIsFullScreen(false);
                       showToast("Returned to Dashboard. Focus session is still active.", "info");
                     }}
-                    className="p-3.5 rounded-full bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-all cursor-pointer"
+                    className="p-3.5 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all cursor-pointer"
                     title="Minimize (Return to Dashboard)"
                   >
                     <Minimize2 className="h-5 w-5" />
@@ -1405,7 +1415,7 @@ const PomodoroPage: React.FC = () => {
                   {timerType === "stopwatch" && (
                     <button
                       onClick={handleStopwatchComplete}
-                      className="p-3.5 rounded-full bg-emerald-950/80 border border-emerald-800 text-emerald-400 hover:text-emerald-300 transition-all cursor-pointer"
+                      className="p-3.5 rounded-full bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-all cursor-pointer"
                       title="Complete Focus Session"
                     >
                       <CheckSquare className="h-5 w-5" />
@@ -1415,23 +1425,23 @@ const PomodoroPage: React.FC = () => {
               </div>
 
               {/* Minimal Soundscape Widget in Fullscreen */}
-              <div className="bg-slate-900/80 border border-white/10 px-5 py-3.5 rounded-2xl flex items-center justify-between gap-4 w-full max-w-sm mt-4 shadow-xl backdrop-blur-md">
+              <div className="bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-white/10 px-5 py-3.5 rounded-2xl flex items-center justify-between gap-4 w-full max-w-sm mt-4 shadow-xl backdrop-blur-md">
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
                   <button
                     onClick={() => setIsMusicPlaying(!isMusicPlaying)}
-                    className={`p-2 rounded-xl text-white ${isMusicPlaying ? 'bg-indigo-500 shadow-md shadow-indigo-500/20' : 'bg-slate-800 hover:bg-slate-750'} transition-all cursor-pointer shrink-0`}
+                    className={`p-2 rounded-xl text-white ${isMusicPlaying ? 'bg-indigo-500 shadow-md shadow-indigo-500/20' : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700'} transition-all cursor-pointer shrink-0`}
                   >
-                    {isMusicPlaying ? <Volume2 className="h-4 w-4 text-white animate-pulse" /> : <VolumeX className="h-4 w-4 text-slate-400" />}
+                    {isMusicPlaying ? <Volume2 className="h-4 w-4 text-white animate-pulse" /> : <VolumeX className="h-4 w-4 text-slate-500 dark:text-slate-400" />}
                   </button>
                   <div className="min-w-0 text-left">
-                    <div className="text-[8px] text-slate-400 uppercase font-black tracking-wider leading-none">Focus Soundscape</div>
+                    <div className="text-[8px] text-slate-500 dark:text-slate-400 uppercase font-black tracking-wider leading-none">Focus Soundscape</div>
                     <select
                       value={currentTrackId}
                       onChange={e => setCurrentTrackId(e.target.value)}
-                      className="bg-transparent text-xs font-bold text-white border-none focus:ring-0 focus:outline-none p-0 cursor-pointer pr-4 truncate w-full mt-0.5"
+                      className="bg-transparent text-xs font-bold text-slate-800 dark:text-white border-none focus:ring-0 focus:outline-none p-0 cursor-pointer pr-4 truncate w-full mt-0.5"
                     >
                       {TRACKS.map(t => (
-                        <option key={t.id} value={t.id} className="bg-slate-900 text-white text-xs font-semibold">{t.name}</option>
+                        <option key={t.id} value={t.id} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white text-xs font-semibold">{t.name}</option>
                       ))}
                     </select>
                   </div>
@@ -1445,7 +1455,7 @@ const PomodoroPage: React.FC = () => {
                     max="100"
                     value={Math.round(musicVolume * 100)}
                     onChange={e => setMusicVolume(parseFloat(e.target.value) / 100)}
-                    className="w-full accent-indigo-400 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                    className="w-full accent-indigo-500 dark:accent-indigo-400 h-1 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer"
                   />
                 </div>
               </div>

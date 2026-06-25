@@ -487,8 +487,19 @@ export const useStore = create<StoreState>()(
                 }, { merge: true }).catch(e => console.error("Firestore arena sync day-reset error:", e));
               }
 
+              const cleanUser: UserProfile = {
+                name: uData.name || "Scholar",
+                email: uData.email || "",
+                avatar: uData.avatar || "",
+                xp: uData.xp !== undefined ? uData.xp : 0,
+                level: uData.level !== undefined ? uData.level : 1,
+                title: uData.title || "Focus Rookie",
+                major: uData.major || "Computer Science",
+                bio: uData.bio || "Leveling up my study game one Pomodoro at a time.",
+              };
+
               set({
-                user: uData as UserProfile,
+                user: cleanUser,
                 sessionCount: nextSessionCount,
                 todayMinutes: nextTodayMinutes,
                 totalStudyTime: uData.totalStudyTime || 0,
@@ -747,7 +758,8 @@ export const useStore = create<StoreState>()(
               // Sync arena session data
               setDoc(doc(db, "arena_sessions", uid), {
                 secondsBase: nextTodayMinutes * 60,
-                totalStudyTime: nextTotalStudyTime
+                totalStudyTime: nextTotalStudyTime,
+                lastActive: Date.now()
               }, { merge: true }).catch(e => console.error("Firestore arena sync error:", e));
 
               // Add XP history log

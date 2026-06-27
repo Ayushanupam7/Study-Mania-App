@@ -46,6 +46,7 @@ export interface Habit {
   streak: number;
   completions: Record<string, boolean>; // e.g. "2026-05-28": true
   createdAt: string;
+  archived?: boolean;
 }
 
 export interface Countdown {
@@ -245,7 +246,7 @@ export const useStore = create<StoreState>()(
 
         gainXp: (amount, reason) =>
           set(state => {
-            const nextXp = state.user.xp + amount;
+            const nextXp = Math.max(0, state.user.xp + amount);
             const xpNeeded = state.user.level * 200;
             let updatedUser = { ...state.user };
             if (nextXp >= xpNeeded) {
@@ -604,8 +605,11 @@ export const useStore = create<StoreState>()(
           set(state => {
             const oldTodo = state.todos.find(t => t.id === id);
             const isJustCompleted = data.completed === true && oldTodo && !oldTodo.completed;
+            const isJustUncompleted = data.completed === false && oldTodo && oldTodo.completed;
             if (isJustCompleted) {
               setTimeout(() => get().gainXp(20, `Completed Task: "${oldTodo?.title}"`), 0);
+            } else if (isJustUncompleted) {
+              setTimeout(() => get().gainXp(-20, `Uncompleted Task: "${oldTodo?.title}"`), 0);
             }
             const updatedTodos = state.todos.map(t => (t.id === id ? { ...t, ...data } : t));
             const updatedTodo = updatedTodos.find(t => t.id === id);
@@ -617,6 +621,10 @@ export const useStore = create<StoreState>()(
           }),
         deleteTodo: id =>
           set(state => {
+            const oldTodo = state.todos.find(t => t.id === id);
+            if (oldTodo) {
+              get().gainXp(-15, `Deleted Task: "${oldTodo.title}"`);
+            }
             const uid = state.userUid;
             if (uid) {
               deleteDoc(doc(db, "users", uid, "todos", id)).catch(e => console.error("Firestore deleteTodo error:", e));
@@ -703,6 +711,7 @@ export const useStore = create<StoreState>()(
                   setTimeout(() => get().gainXp(10, `Completed Habit: "${h.title}"`), 0);
                 } else {
                   streak = Math.max(0, streak - 1);
+                  setTimeout(() => get().gainXp(-10, `Removed Completion: "${h.title}"`), 0);
                 }
                 const updatedH = { ...h, completions, streak };
                 const uid = state.userUid;

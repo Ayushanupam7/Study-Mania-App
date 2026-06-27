@@ -433,14 +433,16 @@ const MainLayout: React.FC = () => {
     const unsubXp = onSnapshot(qXp, (snapshot) => {
       const xps = snapshot.docs.map(doc => {
         const data = doc.data();
+        const amount = data.amount || 0;
+        const isNegative = amount < 0;
         return {
           id: `xp-${doc.id}`,
           type: "xp_gain",
-          title: `+${data.amount} XP Earned`,
+          title: isNegative ? `${amount} XP Deducted` : `+${amount} XP Earned`,
           text: data.reason || "Focus rewards",
           timestamp: data.timestamp || Date.now(),
           icon: "sparkles",
-          color: "text-amber-500 bg-amber-500/10"
+          color: isNegative ? "text-red-500 bg-red-500/10" : "text-amber-500 bg-amber-500/10"
         };
       });
 
@@ -657,7 +659,7 @@ const MainLayout: React.FC = () => {
       case "user_plus":
         return <UserPlus className="h-3.5 w-3.5 text-indigo-500" />;
       case "sparkles":
-        return <Sparkles className="h-3.5 w-3.5 text-amber-500" />;
+        return <Sparkles className="h-3.5 w-3.5 text-current" />;
       case "flame":
         return <Flame className="h-3.5 w-3.5 text-orange-500" />;
       case "message":

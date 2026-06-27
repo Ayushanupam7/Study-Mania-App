@@ -1395,8 +1395,12 @@ const ProfilePage: React.FC = () => {
                                 {dateStr}
                               </span>
                             </div>
-                            <span className="font-black text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/10 px-2 py-0.5 rounded-lg shrink-0">
-                              +{log.amount} XP
+                            <span className={`font-black text-xs px-2 py-0.5 rounded-lg shrink-0 border ${
+                              log.amount < 0
+                                ? "text-red-500 bg-red-500/10 border-red-500/10"
+                                : "text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/10"
+                            }`}>
+                              {log.amount >= 0 ? `+${log.amount}` : log.amount} XP
                             </span>
                           </div>
                         );

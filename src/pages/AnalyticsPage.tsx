@@ -16,7 +16,12 @@ import {
   Cell,
   PieChart,
   Pie,
-  Legend
+  Legend,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar
 } from "recharts";
 import {
   BarChart2,
@@ -35,6 +40,67 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
+// ─── Streak Helper Functions ──────────────────────────────────────────────────
+const computeCurrentStreak = (completions: Record<string, boolean>): number => {
+  const todayStr = new Date().toISOString().split("T")[0];
+  
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().split("T")[0];
+  
+  let streak = 0;
+  const d = new Date();
+  
+  if (completions[todayStr]) {
+    d.setDate(d.getDate());
+  } else if (completions[yesterdayStr]) {
+    d.setDate(d.getDate() - 1);
+  } else {
+    return 0;
+  }
+  
+  while (true) {
+    const key = d.toISOString().split("T")[0];
+    if (completions[key]) {
+      streak++;
+      d.setDate(d.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+  return streak;
+};
+
+const computeLongestStreak = (completions: Record<string, boolean>): number => {
+  const completedDates = Object.keys(completions)
+    .filter(dateStr => completions[dateStr])
+    .map(dateStr => {
+      const parts = dateStr.split("-").map(Number);
+      return new Date(parts[0], parts[1] - 1, parts[2]).getTime();
+    })
+    .sort((a, b) => a - b);
+
+  if (completedDates.length === 0) return 0;
+
+  let longest = 1;
+  let current = 1;
+
+  for (let i = 1; i < completedDates.length; i++) {
+    const diffTime = completedDates[i] - completedDates[i - 1];
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 1) {
+      current++;
+    } else if (diffDays > 1) {
+      longest = Math.max(longest, current);
+      current = 1;
+    }
+  }
+
+  longest = Math.max(longest, current);
+  return longest;
+};
+
 const AnalyticsPage: React.FC = () => {
   const userUid = useStore(state => state.userUid);
   const user = useStore(state => state.user);
@@ -52,6 +118,7 @@ const AnalyticsPage: React.FC = () => {
 
   // Firestore-fetched study sessions
   const [studySessions, setStudySessions] = useState<any[]>([]);
+  const [habitMetric, setHabitMetric] = useState<"streaks" | "rates">("streaks");
 
   // Todo calculations
   const totalTodos = todos.length + stickyNotes.length;
@@ -160,14 +227,109 @@ const AnalyticsPage: React.FC = () => {
     return list;
   }, [todos, stickyNotes]);
 
-  // Habit completion counts
-  const habitChartData = habits.map(h => {
-    const totalCompletions = Object.values(h.completions).filter(Boolean).length;
-    return {
-      name: h.title.length > 10 ? h.title.slice(0, 10) + "..." : h.title,
-      completions: totalCompletions + h.streak // include streak for simulated historical consistency
-    };
-  });
+  // Habit completion metrics (Streaks & 7-Day Completion Rates)
+  const habitChartData = useMemo(() => {
+    return habits.map(h => {
+      const current = computeCurrentStreak(h.completions);
+      const best = computeLongestStreak(h.completions);
+      
+      // Calculate 7-day completion rate
+      let completedCount = 0;
+      for (let i = 0; i < 7; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().split("T")[0];
+        if (h.completions[dateStr]) completedCount++;
+      }
+      const rate = Math.round((completedCount / 7) * 100);
+
+      return {
+        name: h.title.length > 12 ? h.title.slice(0, 12) + "..." : h.title,
+        "Current Streak": current,
+        "Best Streak": best,
+        "Completion Rate": rate
+      };
+    });
+  }, [habits]);
+
+  // RPG Skill Hexagon Analytics
+  const rpgPersonaData = useMemo(() => {
+    // 1. Focus Study Score (max is 300 minutes studied overall or last 30 days, scaled to 100)
+    const focusScore = Math.min(Math.round((totalStudyTime / 300) * 100), 100);
+
+    // 2. Coding Score: tasks + habits completion in Coding
+    const codingCompletedTasks = todos.filter(t => t.completed && t.category?.toLowerCase() === "coding").length;
+    const codingHabitCompletions = habits
+      .filter(h => h.category?.toLowerCase() === "coding")
+      .reduce((acc, h) => acc + Object.values(h.completions).filter(Boolean).length, 0);
+    const codingScore = Math.min((codingCompletedTasks * 15) + (codingHabitCompletions * 8), 100) || 5;
+
+    // 3. Academics Score: tasks + habits completion in Academics
+    const academicsCompletedTasks = todos.filter(t => t.completed && t.category?.toLowerCase() === "academics").length;
+    const academicsHabitCompletions = habits
+      .filter(h => h.category?.toLowerCase() === "academics")
+      .reduce((acc, h) => acc + Object.values(h.completions).filter(Boolean).length, 0);
+    const academicsScore = Math.min((academicsCompletedTasks * 15) + (academicsHabitCompletions * 8), 100) || 5;
+
+    // 4. Reading Score: tasks + habits completion in Reading
+    const readingCompletedTasks = todos.filter(t => t.completed && t.category?.toLowerCase() === "reading").length;
+    const readingHabitCompletions = habits
+      .filter(h => h.category?.toLowerCase() === "reading")
+      .reduce((acc, h) => acc + Object.values(h.completions).filter(Boolean).length, 0);
+    const readingScore = Math.min((readingCompletedTasks * 15) + (readingHabitCompletions * 8), 100) || 5;
+
+    // 5. Mindfulness Score: habits completion in Mindfulness
+    const mindfulnessHabitCompletions = habits
+      .filter(h => h.category?.toLowerCase() === "mindfulness")
+      .reduce((acc, h) => acc + Object.values(h.completions).filter(Boolean).length, 0);
+    const mindfulnessScore = Math.min((mindfulnessHabitCompletions * 15), 100) || 5;
+
+    // 6. Fitness & Health Score: habits completion in Fitness or Health
+    const fitnessHealthHabitCompletions = habits
+      .filter(h => h.category?.toLowerCase() === "fitness" || h.category?.toLowerCase() === "health")
+      .reduce((acc, h) => acc + Object.values(h.completions).filter(Boolean).length, 0);
+    const fitnessHealthScore = Math.min((fitnessHealthHabitCompletions * 12), 100) || 5;
+
+    return [
+      { subject: "Focus", value: focusScore, fullMark: 100 },
+      { subject: "Coding", value: codingScore, fullMark: 100 },
+      { subject: "Academics", value: academicsScore, fullMark: 100 },
+      { subject: "Reading", value: readingScore, fullMark: 100 },
+      { subject: "Mindfulness", value: mindfulnessScore, fullMark: 100 },
+      { subject: "Health/Fit", value: fitnessHealthScore, fullMark: 100 },
+    ];
+  }, [totalStudyTime, todos, habits]);
+
+  // Focus Activity Heatmap Parser (30 Days)
+  const heatmapData = useMemo(() => {
+    const sessionMap: Record<string, number> = {};
+    studySessions.forEach(s => {
+      if (s.timestamp) {
+        const dateObj = new Date(s.timestamp);
+        const formattedDate = `${dateObj.getFullYear()}-${(dateObj.getMonth() + 1).toString().padStart(2, "0")}-${dateObj.getDate().toString().padStart(2, "0")}`;
+        sessionMap[formattedDate] = (sessionMap[formattedDate] || 0) + (s.durationMinutes || 0);
+      }
+    });
+
+    return Array.from({ length: 30 }).map((_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (29 - i));
+      const formattedDate = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}-${d.getDate().toString().padStart(2, "0")}`;
+      const minutes = sessionMap[formattedDate] || 0;
+      
+      let intensity: "none" | "low" | "medium" | "high" | "peak" = "none";
+      if (minutes > 0 && minutes <= 25) intensity = "low";
+      else if (minutes > 25 && minutes <= 60) intensity = "medium";
+      else if (minutes > 60 && minutes <= 120) intensity = "high";
+      else if (minutes > 120) intensity = "peak";
+
+      return {
+        dateStr: d.toLocaleDateString([], { month: 'short', day: 'numeric' }),
+        minutes,
+        intensity
+      };
+    });
+  }, [studySessions]);
 
   const COLORS = ["#0ea5e9", "#a78bfa", "#f59e0b", "#10b981", "#ec4899"];
 
@@ -486,15 +648,36 @@ const AnalyticsPage: React.FC = () => {
           <div className="flex justify-between items-center">
             <h3 className="font-extrabold text-xs sm:text-sm md:text-base flex items-center gap-2 text-slate-850 dark:text-slate-150">
               <Sparkles className="h-4 sm:h-4.5 w-4 sm:w-4.5 text-amber-500" />
-              <span>Habit Frequency Tracker</span>
+              <span>Habits Tracker</span>
             </h3>
-            <span className="text-[10px] uppercase font-bold text-gray-400">Streak + Completions</span>
+            
+            {/* Metric Toggle */}
+            <div className="flex bg-slate-100 dark:bg-slate-900 rounded-lg p-0.5 border border-slate-200/50 dark:border-slate-800/50">
+              <button
+                onClick={() => setHabitMetric("streaks")}
+                className={`px-2.5 py-0.5 text-[9px] font-bold rounded-md transition-all cursor-pointer ${habitMetric === "streaks"
+                  ? "bg-white dark:bg-slate-800 text-amber-500 shadow-xs"
+                  : "text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-350"
+                  }`}
+              >
+                Streaks
+              </button>
+              <button
+                onClick={() => setHabitMetric("rates")}
+                className={`px-2.5 py-0.5 text-[9px] font-bold rounded-md transition-all cursor-pointer ${habitMetric === "rates"
+                  ? "bg-white dark:bg-slate-800 text-indigo-500 shadow-xs"
+                  : "text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-350"
+                  }`}
+              >
+                7-Day Rate
+              </button>
+            </div>
           </div>
 
           <div className="h-60 sm:h-64 w-full min-w-0 relative">
             {habitChartData.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center p-8 text-slate-450 dark:text-slate-500 space-y-1">
-                <Flame className="h-8 w-8 text-amber-300" />
+                <Flame className="h-8 w-8 text-amber-300 animate-pulse" />
                 <div className="text-xs font-bold">No Habits Found</div>
                 <p className="text-[10px] leading-normal max-w-[180px]">Mark daily habits as completed to build consistency tracking charts!</p>
               </div>
@@ -513,17 +696,129 @@ const AnalyticsPage: React.FC = () => {
                       fontSize: "10px",
                       boxShadow: "0 10px 15px -3px rgba(0,0,0,0.3)"
                     }}
+                    formatter={(value) => habitMetric === "rates" ? [`${value}%`, "Completion Rate"] : [`${value} days`]}
                   />
-                  <Bar dataKey="completions" radius={[6, 6, 0, 0]} maxBarSize={40}>
-                    {habitChartData.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Bar>
+                  <Legend verticalAlign="top" height={32} iconType="circle" wrapperStyle={{ fontSize: '9px' }} />
+                  {habitMetric === "streaks" ? (
+                    <>
+                      <Bar dataKey="Current Streak" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={16} />
+                      <Bar dataKey="Best Streak" fill="#f59e0b" radius={[4, 4, 0, 0]} maxBarSize={16} />
+                    </>
+                  ) : (
+                    <Bar dataKey="Completion Rate" fill="#6366f1" radius={[6, 6, 0, 0]} maxBarSize={28}>
+                      {habitChartData.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Bar>
+                  )}
                 </BarChart>
               </ResponsiveContainer>
             )}
           </div>
         </div>
+      </div>
+
+      {/* ── RPG Persona Skill Hexagon & Focus Activity Heatmap Row ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+        
+        {/* RPG Skill Hexagon (1 col) */}
+        <div className="glass-card p-4 sm:p-6 rounded-2xl sm:rounded-3xl space-y-4 border border-slate-200/20 dark:border-slate-800/30 flex flex-col justify-between">
+          <div>
+            <h3 className="font-extrabold text-xs sm:text-sm md:text-base flex items-center gap-2 text-slate-850 dark:text-slate-150">
+              <Award className="h-4 sm:h-4.5 w-4 sm:w-4.5 text-orange-500" />
+              <span>Skill Persona shape</span>
+            </h3>
+            <p className="text-[10px] text-slate-450 dark:text-slate-500 font-semibold mt-0.5">Your academic character attributes balance</p>
+          </div>
+
+          <div className="h-56 sm:h-64 w-full flex items-center justify-center min-w-0 relative">
+            <ResponsiveContainer width="100%" height="100%">
+              <RadarChart cx="50%" cy="50%" outerRadius="70%" data={rpgPersonaData}>
+                <PolarGrid stroke="#94a3b8" strokeDasharray="3 3" className="opacity-30 dark:opacity-20" />
+                <PolarAngleAxis dataKey="subject" stroke="#94a3b8" fontSize={9} fontWeight="bold" />
+                <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="#94a3b8" fontSize={8} tick={false} axisLine={false} />
+                <Radar
+                  name="Stats"
+                  dataKey="value"
+                  stroke="#0ea5e9"
+                  fill="#0ea5e9"
+                  fillOpacity={0.25}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: "rgba(15, 23, 42, 0.95)",
+                    border: "none",
+                    borderRadius: "12px",
+                    color: "#fff",
+                    fontSize: "10px",
+                    boxShadow: "0 10px 15px -3px rgba(0,0,0,0.3)"
+                  }}
+                />
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Focus Activity Heatmap (2 cols) */}
+        <div className="lg:col-span-2 glass-card p-4 sm:p-6 rounded-2xl sm:rounded-3xl space-y-4 border border-slate-200/20 dark:border-slate-800/30 flex flex-col justify-between">
+          <div>
+            <h3 className="font-extrabold text-xs sm:text-sm md:text-base flex items-center gap-2 text-slate-850 dark:text-slate-150">
+              <Calendar className="h-4 sm:h-4.5 w-4 sm:w-4.5 text-sky-500 animate-pulse" />
+              <span>Focus Session Heatmap</span>
+            </h3>
+            <p className="text-[10px] text-slate-455 dark:text-slate-500 font-semibold mt-0.5">Your study activity density over the last 30 days</p>
+          </div>
+
+          {/* Heatmap Grid Grid */}
+          <div className="py-2">
+            <div className="grid grid-cols-10 gap-2 sm:gap-2.5 max-w-lg mx-auto">
+              {heatmapData.map((d, index) => {
+                let cellColor = "bg-slate-100 dark:bg-slate-900 border border-slate-200/25 dark:border-slate-800/30 hover:border-slate-300 dark:hover:border-slate-700";
+                if (d.intensity === "low") {
+                  cellColor = "bg-sky-100 dark:bg-sky-955/20 border border-sky-200/40 dark:border-sky-900/30 hover:border-sky-400/40";
+                } else if (d.intensity === "medium") {
+                  cellColor = "bg-sky-300/60 dark:bg-sky-800/35 border border-sky-400/50 dark:border-sky-800/40 hover:border-sky-400";
+                } else if (d.intensity === "high") {
+                  cellColor = "bg-sky-550 dark:bg-sky-600 text-white shadow-sm shadow-sky-500/5 hover:scale-105";
+                } else if (d.intensity === "peak") {
+                  cellColor = "bg-gradient-to-tr from-sky-500 to-indigo-500 text-white animate-pulse shadow-md shadow-sky-500/10 hover:scale-105";
+                }
+
+                return (
+                  <div
+                    key={index}
+                    title={`${d.dateStr}: ${d.minutes} focus mins`}
+                    className={`aspect-square w-full rounded-md sm:rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 relative group/cell ${cellColor}`}
+                  >
+                    {/* Visual checkmark hint inside peak cells */}
+                    {d.intensity === "peak" && (
+                      <Sparkles className="w-2.5 h-2.5 text-white/90" />
+                    )}
+                    {/* Tooltip popup */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover/cell:block z-30 pointer-events-none whitespace-nowrap bg-slate-950 text-white text-[8px] sm:text-[9.5px] font-bold px-2 py-0.5 rounded-md shadow-lg">
+                      {d.dateStr}: {d.minutes} mins
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Legend and stats */}
+          <div className="flex justify-between items-center text-[9px] font-bold text-slate-455 dark:text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-800/30">
+            <span>Last 30 Days Activity Log</span>
+            <div className="flex items-center gap-1.5">
+              <span>Less</span>
+              <div className="w-2.5 h-2.5 rounded-xs bg-slate-100 dark:bg-slate-900 border border-slate-200/20" />
+              <div className="w-2.5 h-2.5 rounded-xs bg-sky-200 dark:bg-sky-950/20" />
+              <div className="w-2.5 h-2.5 rounded-xs bg-sky-300" />
+              <div className="w-2.5 h-2.5 rounded-xs bg-sky-550" />
+              <div className="w-2.5 h-2.5 rounded-xs bg-gradient-to-tr from-sky-500 to-indigo-500" />
+              <span>More</span>
+            </div>
+          </div>
+        </div>
+
       </div>
 
       {/* Snapshots Log: private history stored in Firebase */}

@@ -50,7 +50,7 @@ const PomodoroPage: React.FC = () => {
   const [mode, setMode] = useState<"work" | "short" | "long">("work");
   const [secondsLeft, setSecondsLeft] = useState(storeWorkTime * 60);
   const [isRunning, setIsRunning] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundEnabled] = useState(true);
   const [showConfig, setShowConfig] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
 

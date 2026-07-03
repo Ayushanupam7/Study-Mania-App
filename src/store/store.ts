@@ -3,7 +3,7 @@ import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 import { db, auth } from "../firebase";
 import { doc, setDoc, getDoc, getDocs, collection, deleteDoc, addDoc } from "firebase/firestore";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from "firebase/auth";
 
 export interface UserProfile {
   name: string;
@@ -121,6 +121,7 @@ interface AuthState {
   userUid: string | null;
   loginWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string, name: string, major: string) => Promise<void>;
+  sendResetPasswordEmail: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   deactivateAccount: () => Promise<void>;
   setAuthUser: (uid: string | null) => void;
@@ -367,6 +368,18 @@ export const useStore = create<StoreState>()(
             }
           } catch (error: any) {
             set({ authError: error.message || "Failed to sign up." });
+            throw error;
+          } finally {
+            set({ authLoading: false });
+          }
+        },
+
+        sendResetPasswordEmail: async (email) => {
+          set({ authLoading: true, authError: null });
+          try {
+            await sendPasswordResetEmail(auth, email);
+          } catch (error: any) {
+            set({ authError: error.message || "Failed to send password reset email." });
             throw error;
           } finally {
             set({ authLoading: false });

@@ -12,6 +12,7 @@ const LoginPage: React.FC = () => {
   const [major, setMajor] = useState("Computer Science");
 
   const loginWithEmail = useStore(state => state.loginWithEmail);
+  const loginWithGoogle = useStore(state => state.loginWithGoogle);
   const signUpWithEmail = useStore(state => state.signUpWithEmail);
   const sendResetPasswordEmail = useStore(state => state.sendResetPasswordEmail);
   const authLoading = useStore(state => state.authLoading);
@@ -26,6 +27,16 @@ const LoginPage: React.FC = () => {
     setValidationError(null);
     setResetSent(false);
     useStore.setState({ authError: null });
+  };
+
+  const handleGoogleSignIn = async () => {
+    setValidationError(null);
+    useStore.setState({ authError: null });
+    try {
+      await loginWithGoogle();
+    } catch (err) {
+      console.log("Google Sign-In failed:", err);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -408,6 +419,31 @@ const LoginPage: React.FC = () => {
                       <ArrowRight className="h-4 w-4" />
                     </>
                   )}
+                </button>
+
+                {/* Divider */}
+                <div className="relative flex py-2 items-center">
+                  <div className="flex-grow border-t border-white/5"></div>
+                  <span className="flex-shrink mx-4 text-slate-500 text-[10px] font-bold uppercase tracking-wider">
+                    Or continue with
+                  </span>
+                  <div className="flex-grow border-t border-white/5"></div>
+                </div>
+
+                {/* Google Sign In Button */}
+                <button
+                  type="button"
+                  onClick={handleGoogleSignIn}
+                  disabled={authLoading}
+                  className="w-full py-3 rounded-2xl bg-white text-slate-900 hover:bg-slate-100 font-bold text-sm shadow-xl flex items-center justify-center gap-3 transform active:scale-98 transition-all disabled:opacity-55 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21.35,11.1H12v2.7h5.38c-0.24,1.28 -0.96,2.37 -2.04,3.1v2.58h3.3c1.93,-1.78 3.04,-4.4 3.04,-7.4C21.68,11.96 21.56,11.5 21.35,11.1z" fill="#4285F4" />
+                    <path d="M12,21c2.43,0 4.47,-0.8 5.96,-2.18l-3.3,-2.58c-0.9,0.6 -2.07,0.98 -3.3,0.98 -2.34,0 -4.33,-1.58 -5.03,-3.7H2.88v2.7C4.38,19.2 8.01,21 12,21z" fill="#34A853" />
+                    <path d="M6.97,13.52C6.83,13.1 6.75,12.57 6.75,12c0,-0.57 0.08,-1.1 0.22,-1.52V7.78H2.88C2.3,8.96 2,10.43 2,12z" fill="#FBBC05" />
+                    <path d="M12,5.78c1.32,0 2.5,0.45 3.44,1.35l2.58,-2.58C16.46,3.09 14.43,2.25 12,2.25c-3.99,0 -7.62,1.8 -9.12,4.78l4.09,3.7C7.67,7.36 9.66,5.78 12,5.78z" fill="#EA4335" />
+                  </svg>
+                  <span>Sign In with Google</span>
                 </button>
               </form>
             </>

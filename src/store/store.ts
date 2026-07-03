@@ -3,7 +3,7 @@ import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 import { db, auth } from "../firebase";
 import { doc, setDoc, getDoc, getDocs, collection, deleteDoc, addDoc } from "firebase/firestore";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 
 export interface UserProfile {
   name: string;
@@ -120,6 +120,7 @@ interface AuthState {
   isAuthenticated: boolean;
   userUid: string | null;
   loginWithEmail: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   signUpWithEmail: (email: string, password: string, name: string, major: string) => Promise<void>;
   sendResetPasswordEmail: (email: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -315,6 +316,65 @@ export const useStore = create<StoreState>()(
             await signInWithEmailAndPassword(auth, email, password);
           } catch (error: any) {
             set({ authError: error.message || "Failed to sign in." });
+            throw error;
+          } finally {
+            set({ authLoading: false });
+          }
+        },
+
+        loginWithGoogle: async () => {
+          set({ authLoading: true, authError: null });
+          try {
+            const provider = new GoogleAuthProvider();
+            const userCredential = await signInWithPopup(auth, provider);
+            const user = userCredential.user;
+            const uid = user.uid;
+            
+            const userDoc = await getDoc(doc(db, "users", uid));
+            if (!userDoc.exists()) {
+              const name = user.displayName || "Scholar";
+              const email = user.email || "";
+              const initialUser: UserProfile = {
+                name,
+                email,
+                avatar: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(name)}`,
+                xp: 0,
+                level: 1,
+                title: "Focus Rookie",
+                major: "Computer Science",
+                bio: "Leveling up my study game one Pomodoro at a time.",
+              };
+
+              await setDoc(doc(db, "users", uid), {
+                ...initialUser,
+                totalStudyTime: 0,
+                todayMinutes: 0,
+                sessionCount: 0,
+                lastStudyDate: "",
+                studyHistory: {},
+                dailyResetHour: 4,
+                dailyGoalHours: 8,
+              });
+
+              const localTodos = get().todos;
+              for (const todo of localTodos) {
+                await setDoc(doc(db, "users", uid, "todos", todo.id), todo);
+              }
+              const localHabits = get().habits;
+              for (const habit of localHabits) {
+                await setDoc(doc(db, "users", uid, "habits", habit.id), habit);
+              }
+              const localNotes = get().notes;
+              for (const note of localNotes) {
+                await setDoc(doc(db, "users", uid, "notes", note.id), note);
+              }
+              const localCountdowns = get().countdowns;
+              for (const cd of localCountdowns) {
+                await setDoc(doc(db, "users", uid, "countdowns", cd.id), cd);
+              }
+            }
+          } catch (error: any) {
+            set({ authError: error.message || "Failed to sign in with Google." });
             throw error;
           } finally {
             set({ authLoading: false });

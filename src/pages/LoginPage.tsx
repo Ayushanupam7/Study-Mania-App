@@ -405,38 +405,28 @@ const LoginPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  disabled={authLoading}
-                  className="w-full mt-2 py-3 rounded-2xl bg-gradient-to-r from-blue-500 to-sky-500 hover:from-blue-600 hover:to-sky-600 text-white font-bold text-sm shadow-xl shadow-blue-500/10 flex items-center justify-center gap-2 transform active:scale-98 transition-all disabled:opacity-55 disabled:cursor-not-allowed cursor-pointer"
-                >
-                  {authLoading ? (
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <span>{isLogin ? "Sign In to Study Mania" : "Create Study Mania Account"}</span>
-                      <ArrowRight className="h-4 w-4" />
-                    </>
-                  )}
-                </button>
+                {/* Action Buttons Row (Standard + Google) */}
+                <div className="flex items-center gap-3 mt-2">
+                  <button
+                    type="submit"
+                    disabled={authLoading}
+                    className="flex-1 h-12 rounded-2xl bg-gradient-to-r from-blue-500 to-sky-500 hover:from-blue-600 hover:to-sky-600 text-white font-bold text-sm shadow-xl shadow-blue-500/10 flex items-center justify-center gap-2 transform active:scale-98 transition-all disabled:opacity-55 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    {authLoading ? (
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <span>{isLogin ? "Sign In" : "Create Account"}</span>
+                        <ArrowRight className="h-4 w-4" />
+                      </>
+                    )}
+                  </button>
 
-                {/* Divider */}
-                <div className="relative flex py-2 items-center">
-                  <div className="flex-grow border-t border-white/5"></div>
-                  <span className="flex-shrink mx-4 text-slate-500 text-[10px] font-bold uppercase tracking-wider">
-                    Or continue with
-                  </span>
-                  <div className="flex-grow border-t border-white/5"></div>
-                </div>
-
-                {/* Social Sign In Row */}
-                <div className="flex justify-center gap-4 pt-1">
                   <button
                     type="button"
                     onClick={handleGoogleSignIn}
                     disabled={authLoading}
-                    className="w-12 h-12 rounded-2xl bg-white border border-white/10 hover:bg-slate-100 shadow-xl flex items-center justify-center transform active:scale-95 transition-all disabled:opacity-55 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                    className="w-12 h-12 rounded-2xl bg-white border border-white/10 hover:bg-slate-100 shadow-xl flex items-center justify-center transform active:scale-95 transition-all disabled:opacity-55 disabled:cursor-not-allowed cursor-pointer transition-colors shrink-0"
                     title="Sign In with Google"
                   >
                     <svg className="w-5.5 h-5.5" viewBox="0 0 24 24" width="22" height="22" xmlns="http://www.w3.org/2000/svg">

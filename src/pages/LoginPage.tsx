@@ -96,7 +96,7 @@ const LoginPage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center bg-slate-950 text-slate-100 overflow-hidden px-4">
+    <div className="min-h-screen relative flex items-center justify-center bg-slate-950 text-slate-100 overflow-y-auto py-10 px-4">
       {/* Premium Background Blobs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
@@ -128,7 +128,7 @@ const LoginPage: React.FC = () => {
       </div>
 
       {/* Main Container */}
-      <div className="w-full max-w-md z-10 space-y-6">
+      <div className="w-full max-w-md z-10 space-y-6 my-auto">
         {/* Brand Header */}
         <div className="text-center space-y-2.5">
           <motion.div
@@ -153,7 +153,7 @@ const LoginPage: React.FC = () => {
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="bg-slate-900/50 backdrop-blur-2xl border border-white/10 p-6 sm:p-8 rounded-3xl shadow-2xl relative overflow-hidden"
+          className="bg-slate-900/50 backdrop-blur-2xl border border-white/10 p-5 sm:p-8 rounded-2xl sm:rounded-3xl shadow-2xl relative overflow-hidden"
         >
           {isForgotPassword ? (
             <div className="space-y-6">

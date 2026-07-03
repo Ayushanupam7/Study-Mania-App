@@ -1,5 +1,5 @@
-import React from "react";
-import { Clock, Trash2, PlayCircle, StopCircle } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import { Clock, Trash2, PlayCircle, StopCircle, List, Calendar } from "lucide-react";
 
 export interface Session {
   id: string;
@@ -51,9 +51,37 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
   formatStudyTime,
   onDeleteSession,
 }) => {
+  const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
+
+  // Group sessions by date for calendar view
+  const sessionsByDate = useMemo(() => {
+    const grouped: Record<string, Session[]> = {};
+    studySessions.forEach(session => {
+      const endEpoch = session.endTime ?? session.timestamp;
+      const d = new Date(endEpoch);
+      const dateKey = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}-${d.getDate().toString().padStart(2, "0")}`;
+      if (!grouped[dateKey]) grouped[dateKey] = [];
+      grouped[dateKey].push(session);
+    });
+    return grouped;
+  }, [studySessions]);
+
+  // Calculate total minutes for each date
+  const dailyStats = useMemo(() => {
+    const stats: Record<string, { count: number; totalMinutes: number }> = {};
+    Object.entries(sessionsByDate).forEach(([date, sessions]) => {
+      const totalMinutes = sessions.reduce((sum, s) => sum + s.durationMinutes, 0);
+      stats[date] = {
+        count: sessions.length,
+        totalMinutes
+      };
+    });
+    return stats;
+  }, [sessionsByDate]);
+
   return (
     <div className="glass-card p-4 sm:p-5 rounded-3xl border border-indigo-500/10 space-y-4">
-      {/* Header */}
+      {/* Header with toggle */}
       <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-800/50 pb-3">
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-500 animate-pulse shrink-0" />
@@ -61,9 +89,36 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
             Session History
           </h3>
         </div>
-        <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-indigo-500/10 text-indigo-500 shrink-0">
-          {studySessions.length} Logged
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-indigo-500/10 text-indigo-500 shrink-0">
+            {studySessions.length} Logged
+          </span>
+          {/* View Toggle */}
+          <div className="flex gap-1 bg-slate-200/50 dark:bg-slate-800/50 p-1 rounded-lg">
+            <button
+              onClick={() => setViewMode("list")}
+              className={`p-1.5 rounded-md transition-all ${
+                viewMode === "list"
+                  ? "bg-indigo-500 text-white"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+              }`}
+              title="List View"
+            >
+              <List className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setViewMode("calendar")}
+              className={`p-1.5 rounded-md transition-all ${
+                viewMode === "calendar"
+                  ? "bg-indigo-500 text-white"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+              }`}
+              title="Calendar View"
+            >
+              <Calendar className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Empty state */}
@@ -74,7 +129,8 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
             No sessions yet. Start studying to log your first session!
           </p>
         </div>
-      ) : (
+      ) : viewMode === "list" ? (
+        // LIST VIEW
         <div className="space-y-2.5 max-h-[340px] sm:max-h-[300px] overflow-y-auto pr-0.5 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
           {studySessions.map((session, idx) => {
             const displayNum = session.sessionNumber ?? studySessions.length - idx;
@@ -186,6 +242,92 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
               </div>
             );
           })}
+        </div>
+      ) : (
+        // CALENDAR VIEW
+        <div className="space-y-3 max-h-[340px] sm:max-h-[300px] overflow-y-auto pr-0.5 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
+          {Object.entries(sessionsByDate)
+            .sort(([dateA], [dateB]) => dateB.localeCompare(dateA))
+            .map(([dateKey, sessions]) => {
+              const [year, month, day] = dateKey.split("-");
+              const dateObj = new Date(`${year}-${month}-${day}`);
+              const stats = dailyStats[dateKey];
+              const dateLabel = formatDateFull(dateObj.getTime());
+              
+              return (
+                <div key={dateKey} className="rounded-2xl bg-slate-50/60 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/60 overflow-hidden">
+                  {/* Date header */}
+                  <div className="px-3 py-2.5 bg-indigo-50 dark:bg-indigo-950/30 border-b border-indigo-200/30 dark:border-indigo-800/30">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-extrabold text-indigo-900 dark:text-indigo-100">
+                          {dateLabel}
+                        </p>
+                        <p className="text-[10px] text-indigo-700 dark:text-indigo-300 font-semibold">
+                          {dateKey}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <p className="text-[10px] font-black text-indigo-700 dark:text-indigo-300 uppercase tracking-wide">
+                            {stats.count} {stats.count === 1 ? "Session" : "Sessions"}
+                          </p>
+                          <p className="text-xs font-extrabold text-indigo-900 dark:text-indigo-100">
+                            {stats.totalMinutes}m
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Sessions for this date */}
+                  <div className="space-y-2 p-3">
+                    {sessions.map((session) => {
+                      const isPomodoro = session.sessionType === "pomodoro";
+                      const duration = session.durationMinutes;
+                      const endEpoch = session.endTime ?? session.timestamp;
+                      const startEpoch = session.startTime ?? endEpoch - duration * 60 * 1000;
+                      const startStr = formatTime(startEpoch);
+                      const endStr = formatTime(endEpoch);
+
+                      return (
+                        <div
+                          key={session.id}
+                          className="rounded-lg bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-2.5 flex items-center justify-between"
+                        >
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <div
+                              className={`p-1 rounded-md shrink-0 ${
+                                isPomodoro
+                                  ? "bg-emerald-500/10 text-emerald-500"
+                                  : "bg-indigo-500/10 text-indigo-500"
+                              }`}
+                            >
+                              <Clock className="h-3 w-3" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[10px] font-black text-slate-700 dark:text-white">
+                                {startStr} → {endStr}
+                              </p>
+                              <p className="text-[9px] text-slate-500 dark:text-slate-400">
+                                {isPomodoro ? "🍅 Pomodoro" : "⏱️ Stopwatch"} • {duration}m
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => onDeleteSession(session)}
+                            className="p-1 ml-2 rounded-lg text-slate-300 dark:text-slate-600 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all shrink-0"
+                            title="Delete Session"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
         </div>
       )}
     </div>

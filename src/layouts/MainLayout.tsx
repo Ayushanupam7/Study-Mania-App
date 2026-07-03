@@ -911,14 +911,46 @@ const MainLayout: React.FC = () => {
           {/* Main Content Area */}
           <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
             {/* Interactive main outlet container */}
-            <main className={`flex-1 relative ${
+            <main className={`flex-1 relative flex flex-col ${
               isChatPage 
                 ? "overflow-hidden h-full w-full pb-16 lg:pb-0" 
-                : "overflow-y-auto px-4 md:px-8 lg:px-10 pb-24 lg:pb-10"
+                : "overflow-y-auto px-4 md:px-8 lg:px-10 pb-16 lg:pb-0"
             }`}>
               {/* Page content animations wrap */}
-              <div className={isChatPage ? "h-full w-full" : "max-w-7xl mx-auto w-full pb-10"}>
-                <Outlet />
+              <div className={isChatPage ? "h-full w-full" : "max-w-7xl mx-auto w-full flex-grow flex flex-col"}>
+                {isChatPage ? (
+                  <Outlet />
+                ) : (
+                  <>
+                    <div className="flex-grow pb-10">
+                      <Outlet />
+                    </div>
+                    <footer className="pt-6 pb-6 border-t border-slate-200/30 dark:border-slate-800/40 mt-auto text-center sm:text-left w-full shrink-0">
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-[10px] sm:text-xs font-bold text-slate-500 dark:text-slate-400">
+                        <div className="flex items-center gap-1.5 justify-center sm:justify-start">
+                          <div className="w-5.5 h-5.5 rounded-lg gradient-primary flex items-center justify-center text-white text-[9px] font-black shrink-0 shadow-sm shadow-blue-500/15">
+                            S
+                          </div>
+                          <span className="text-slate-700 dark:text-slate-300 font-extrabold">Study Mania</span>
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-sky-500 font-bold border border-slate-200/20 dark:border-slate-800/30">
+                            Version 1.3.0
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-center gap-1 select-none">
+                          <span>Developed by</span>
+                          <span className="text-slate-700 dark:text-slate-300 font-extrabold hover:text-sky-500 transition-colors">
+                            Ayush Anupam
+                          </span>
+                        </div>
+
+                        <div className="opacity-80 leading-none">
+                          &copy; {new Date().getFullYear()} Study Mania. All rights reserved.
+                        </div>
+                      </div>
+                    </footer>
+                  </>
+                )}
               </div>
             </main>
 

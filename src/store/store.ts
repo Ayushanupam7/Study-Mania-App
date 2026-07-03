@@ -538,23 +538,23 @@ export const useStore = create<StoreState>()(
 
             const todosSnap = await getDocs(collection(db, "users", uid, "todos"));
             const todos = todosSnap.docs.map(doc => doc.data() as Todo);
-            if (todos.length > 0) set({ todos });
+            set({ todos });
 
             const habitsSnap = await getDocs(collection(db, "users", uid, "habits"));
             const habits = habitsSnap.docs.map(doc => doc.data() as Habit);
-            if (habits.length > 0) set({ habits });
+            set({ habits });
 
             const notesSnap = await getDocs(collection(db, "users", uid, "notes"));
             const notes = notesSnap.docs.map(doc => doc.data() as Note);
-            if (notes.length > 0) set({ notes });
+            set({ notes });
 
             const cdsSnap = await getDocs(collection(db, "users", uid, "countdowns"));
             const countdowns = cdsSnap.docs.map(doc => doc.data() as Countdown);
-            if (countdowns.length > 0) set({ countdowns });
+            set({ countdowns });
 
             const stickySnap = await getDocs(collection(db, "users", uid, "sticky_notes"));
             const stickyNotes = stickySnap.docs.map(doc => doc.data() as StickyNote);
-            if (stickyNotes.length > 0) set({ stickyNotes });
+            set({ stickyNotes });
 
             const friendsSnap = await getDocs(collection(db, "users", uid, "friends"));
             const friendsList = friendsSnap.docs.map(doc => doc.data() as any as Friend);
@@ -897,7 +897,7 @@ export const useStore = create<StoreState>()(
               d.setDate(d.getDate() - 1);
             }
             const currentStudyDay = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}-${d.getDate().toString().padStart(2, "0")}`;
-            
+
             if (state.lastStudyDate && state.lastStudyDate !== currentStudyDay) {
               // Reset daily stats in Firestore
               setDoc(doc(db, "users", state.userUid), {

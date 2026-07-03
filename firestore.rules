@@ -26,6 +26,9 @@ service cloud.firestore {
       match /xp_history/{xpId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
+      match /study_sessions/{sessionId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
 
       // Friends & Friend Requests (Requires access by both sender/recipient for mutual sync)
       match /friends/{friendId} {
@@ -39,18 +42,76 @@ service cloud.firestore {
       }
     }
 
-    // 2. Arena Sessions (Users need to post their session & peers need to send cheers)
+    // 2. Arena Sessions (Users can read all, but only own/admin can write)
     match /arena_sessions/{sessionId} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (request.auth.uid == resource.data.userId || request.auth.uid == sessionId);
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && (request.auth.uid == resource.data.userId || request.auth.uid == sessionId);
+      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+
+      // Cheers subcollection - Anyone can read, authenticated users can add cheers
+      match /cheers/{cheerId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+        allow update: if request.auth != null && request.auth.uid == resource.data.userId;
+        allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      }
     }
 
-    // 3. Chat Rooms & Messages
-    match /chats/{chatRoomId} {
-      allow read, write: if request.auth != null;
+    // 3. Arena Feed (Public read, authenticated users can write)
+    match /arena_feed/{feedId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
 
+    // 4. Chat Rooms & Messages with proper ownership
+    match /chats/{chatRoomId} {
+      allow read: if request.auth != null && (
+        request.auth.uid in resource.data.participants || 
+        request.auth.uid == resource.data.createdBy
+      );
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.createdBy;
+      allow update: if request.auth != null && (
+        request.auth.uid in resource.data.participants || 
+        request.auth.uid == resource.data.createdBy
+      );
+      allow delete: if request.auth != null && request.auth.uid == resource.data.createdBy;
+
+      // Messages subcollection - Only participants can read/write
       match /messages/{messageId} {
-        allow read, write: if request.auth != null;
+        allow read: if request.auth != null && (
+          request.auth.uid in get(/databases/$(database)/documents/chats/$(chatRoomId)).data.participants ||
+          request.auth.uid == get(/databases/$(database)/documents/chats/$(chatRoomId)).data.createdBy
+        );
+        allow create: if request.auth != null && request.auth.uid == request.resource.data.senderId;
+        allow update: if request.auth != null && request.auth.uid == resource.data.senderId;
+        allow delete: if request.auth != null && request.auth.uid == resource.data.senderId;
       }
+    }
+
+    // 5. Direct Messages (1-on-1 chats)
+    match /direct_messages/{messageId} {
+      allow read: if request.auth != null && (
+        request.auth.uid == resource.data.senderId || 
+        request.auth.uid == resource.data.recipientId
+      );
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.senderId;
+      allow update: if request.auth != null && request.auth.uid == resource.data.senderId;
+      allow delete: if request.auth != null && (
+        request.auth.uid == resource.data.senderId || 
+        request.auth.uid == resource.data.recipientId
+      );
+    }
+
+    // 6. Notifications
+    match /notifications/{userId}/items/{notificationId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if request.auth != null && request.auth.uid == userId;
     }
   }
 }

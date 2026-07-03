@@ -99,7 +99,9 @@ const DashboardPage: React.FC = () => {
   useEffect(() => {
     const q = query(collection(db, "arena_feed"), orderBy("timestamp", "desc"), limit(10));
     const unsubscribe = onSnapshot(q, (snapshot) => {
+      console.log("📡 Dashboard: Arena feed snapshot received, doc count:", snapshot.docs.length);
       if (snapshot.empty) {
+        console.log("📭 Dashboard: Arena feed is empty, showing mock data");
         setFeedEvents([
           { id: 1, text: "Chloe Chen started a 50m session on Chemistry 📐", time: "2m ago" },
           { id: 2, text: "Alex Rivera entered the Focus Arena ⚡", time: "5m ago" },
@@ -126,10 +128,22 @@ const DashboardPage: React.FC = () => {
           time: timeStr
         };
       });
+      console.log("✅ Dashboard: Arena feed loaded:", events.length, "events");
       setFeedEvents(events);
+    }, (err: any) => {
+      console.error("❌ Dashboard: Arena feed listener error:", {
+        code: err.code,
+        message: err.message,
+        details: err
+      });
+      if (err.code === "permission-denied") {
+        console.error("🔒 Permission denied! Check Firestore rules for arena_feed collection");
+      }
     });
     return () => unsubscribe();
   }, []);
+
+
 
   // Real-time Firestore Arena Competitors synchronization
   useEffect(() => {
@@ -294,7 +308,7 @@ const DashboardPage: React.FC = () => {
         {/* Right Info Controls Panel */}
         <div className="relative z-10 flex flex-col md:flex-row items-stretch gap-4 shrink-0 w-full xl:w-auto">
           {/* Time, Day, Date Card */}
-          <div className="flex items-center gap-4 bg-white/10 backdrop-blur-md p-4 sm:px-5 sm:py-4 rounded-2xl border border-white/20 shadow-md shadow-black/5 hover:bg-white/15 transition-all flex-1 md:flex-initial">
+          <div className="flex items-center gap-4 bg-white/10 backdrop-blur-md p-4 sm:px-5 sm:py-4 rounded-2xl border border-white/20 shadow-md shadow-black/5 hover:bg-white/15 hover:scale-[1.02] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 transition-all duration-300 flex-1 md:flex-initial">
             <div className="p-2.5 rounded-xl bg-white/10 text-white border border-white/10 shrink-0">
               <Calendar className="h-5 w-5 text-sky-200" />
             </div>
@@ -312,7 +326,7 @@ const DashboardPage: React.FC = () => {
           </div>
 
           {/* Scholar Progress Card */}
-          <div className="bg-white/10 backdrop-blur-md p-4 sm:px-5 sm:py-4 rounded-2xl border border-white/20 shadow-md shadow-black/5 hover:bg-white/15 transition-all w-full md:w-[320px] shrink-0">
+          <div className="bg-white/10 backdrop-blur-md p-4 sm:px-5 sm:py-4 rounded-2xl border border-white/20 shadow-md shadow-black/5 hover:bg-white/15 hover:scale-[1.02] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/10 transition-all duration-300 w-full md:w-[320px] shrink-0">
             <div className="flex items-center gap-4">
               {/* Level Circle */}
               <div className="relative shrink-0">
@@ -378,10 +392,10 @@ const DashboardPage: React.FC = () => {
         {/* Todo Card */}
         <Link
           to="/todos"
-          className="glass-card p-4 sm:p-5 rounded-2xl flex flex-col justify-between h-32 sm:h-36 border border-sky-500/10 hover:border-sky-500/40 hover:bg-sky-50/10 dark:hover:bg-sky-950/10 transition-all duration-300"
+          className="glass-card p-4 sm:p-5 rounded-2xl flex flex-col justify-between h-32 sm:h-36 border border-sky-500/10 hover:border-sky-500/40 hover:bg-sky-50/10 dark:hover:bg-sky-950/10 hover:-translate-y-1 hover:scale-[1.02] hover:shadow-[0_12px_24px_rgba(14,165,233,0.15)] transition-all duration-300 group"
         >
           <div className="flex justify-between items-start">
-            <div className="p-2 sm:p-2.5 rounded-xl bg-sky-50 dark:bg-sky-950/50 text-sky-500 border border-sky-100 dark:border-sky-900/30">
+            <div className="p-2 sm:p-2.5 rounded-xl bg-sky-50 dark:bg-sky-950/50 text-sky-500 border border-sky-100 dark:border-sky-900/30 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300 shrink-0">
               <CheckSquare className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
             </div>
             <span className="text-[10px] sm:text-xs font-bold text-sky-500">Tasks</span>
@@ -395,10 +409,10 @@ const DashboardPage: React.FC = () => {
         {/* Habits Card */}
         <Link
           to="/habits"
-          className="glass-card p-4 sm:p-5 rounded-2xl flex flex-col justify-between h-32 sm:h-36 border border-orange-500/10 hover:border-orange-500/40 hover:bg-orange-50/10 dark:hover:bg-orange-950/10 transition-all duration-300"
+          className="glass-card p-4 sm:p-5 rounded-2xl flex flex-col justify-between h-32 sm:h-36 border border-orange-500/10 hover:border-orange-500/40 hover:bg-orange-50/10 dark:hover:bg-orange-950/10 hover:-translate-y-1 hover:scale-[1.02] hover:shadow-[0_12px_24px_rgba(249,115,22,0.15)] transition-all duration-300 group"
         >
           <div className="flex justify-between items-start">
-            <div className="p-2 sm:p-2.5 rounded-xl bg-orange-50 dark:bg-orange-950/50 text-orange-500 border border-orange-100 dark:border-orange-900/30">
+            <div className="p-2 sm:p-2.5 rounded-xl bg-orange-50 dark:bg-orange-950/50 text-orange-500 border border-orange-100 dark:border-orange-900/30 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300 shrink-0">
               <Flame className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
             </div>
             <span className="text-[10px] sm:text-xs font-bold text-orange-500">Habits</span>
@@ -412,10 +426,10 @@ const DashboardPage: React.FC = () => {
         {/* Countdowns Card */}
         <Link
           to="/countdowns"
-          className="glass-card p-4 sm:p-5 rounded-2xl flex flex-col justify-between h-32 sm:h-36 border border-purple-500/10 hover:border-purple-500/40 hover:bg-purple-50/10 dark:hover:bg-purple-950/10 transition-all duration-300"
+          className="glass-card p-4 sm:p-5 rounded-2xl flex flex-col justify-between h-32 sm:h-36 border border-purple-500/10 hover:border-purple-500/40 hover:bg-purple-50/10 dark:hover:bg-purple-950/10 hover:-translate-y-1 hover:scale-[1.02] hover:shadow-[0_12px_24px_rgba(168,85,247,0.15)] transition-all duration-300 group"
         >
           <div className="flex justify-between items-start">
-            <div className="p-2 sm:p-2.5 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-500 border border-purple-100 dark:border-purple-900/30">
+            <div className="p-2 sm:p-2.5 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-500 border border-purple-100 dark:border-purple-900/30 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300 shrink-0">
               <Calendar className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
             </div>
             <span className="text-[10px] sm:text-xs font-bold text-purple-500">Closest Exam</span>
@@ -433,10 +447,10 @@ const DashboardPage: React.FC = () => {
         {/* Focus Timer Launch Card */}
         <Link
           to="/pomodoro"
-          className="glass-card p-4 sm:p-5 rounded-2xl flex flex-col justify-between h-32 sm:h-36 border border-emerald-500/10 hover:border-emerald-500/40 hover:bg-emerald-50/10 dark:hover:bg-emerald-950/10 transition-all duration-300"
+          className="glass-card p-4 sm:p-5 rounded-2xl flex flex-col justify-between h-32 sm:h-36 border border-emerald-500/10 hover:border-emerald-500/40 hover:bg-emerald-50/10 dark:hover:bg-emerald-950/10 hover:-translate-y-1 hover:scale-[1.02] hover:shadow-[0_12px_24px_rgba(16,185,129,0.15)] transition-all duration-300 group"
         >
           <div className="flex justify-between items-start">
-            <div className="p-2 sm:p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-500 border border-emerald-100 dark:border-emerald-900/30">
+            <div className="p-2 sm:p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-500 border border-emerald-100 dark:border-emerald-900/30 group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-300 shrink-0">
               <Timer className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
             </div>
             <span className="text-[10px] sm:text-xs font-bold text-emerald-500">Pomodoro</span>
@@ -448,7 +462,7 @@ const DashboardPage: React.FC = () => {
                 {formatHhMmSs(todayMinutes)}
               </div>
             </div>
-            <ChevronRight className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-emerald-500 shrink-0" />
+            <ChevronRight className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-emerald-500 shrink-0 group-hover:translate-x-1 transition-transform duration-300" />
           </div>
         </Link>
       </motion.div>
@@ -606,6 +620,8 @@ const DashboardPage: React.FC = () => {
           </div>
         </div>
       </motion.div>
+
+
       {/* ===== DAILY QUESTS SECTION ===== */}
       <motion.div variants={itemVariants} className="space-y-4">
         {/* Header */}
@@ -784,7 +800,7 @@ const DashboardPage: React.FC = () => {
           return (
             <>
               {/* XP summary bar */}
-              <div className="glass-card p-4 rounded-2xl flex items-center gap-4">
+              <div className="glass-card p-4 rounded-2xl flex items-center gap-4 hover:shadow-md hover:shadow-amber-500/5 hover:border-amber-500/20 transition-all duration-300">
                 <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 shrink-0">
                   <Zap className="h-5 w-5 text-amber-500" />
                 </div>
@@ -1098,31 +1114,6 @@ const DashboardPage: React.FC = () => {
 
 
 
-      {/* Professional Dashboard Footer */}
-      <footer className="pt-6 pb-6 border-t border-slate-200/30 dark:border-slate-800/40 mt-2 text-center sm:text-left">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-[10px] sm:text-xs font-bold text-slate-500 dark:text-slate-400">
-          <div className="flex items-center gap-1.5 justify-center sm:justify-start">
-            <div className="w-5.5 h-5.5 rounded-lg gradient-primary flex items-center justify-center text-white text-[9px] font-black shrink-0 shadow-sm shadow-blue-500/15">
-              S
-            </div>
-            <span className="text-slate-700 dark:text-slate-300 font-extrabold">Study Mania</span>
-            <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-sky-500 font-bold border border-slate-200/20 dark:border-slate-800/30">
-              Version 1.3.0
-            </span>
-          </div>
-
-          <div className="flex items-center justify-center gap-1 select-none">
-            <span>Developed by</span>
-            <span className="text-slate-700 dark:text-slate-300 font-extrabold hover:text-sky-500 transition-colors">
-              Ayush Anupam
-            </span>
-          </div>
-
-          <div className="opacity-80 leading-none">
-            &copy; {new Date().getFullYear()} Study Mania. All rights reserved.
-          </div>
-        </div>
-      </footer>
     </motion.div>
   );
 };

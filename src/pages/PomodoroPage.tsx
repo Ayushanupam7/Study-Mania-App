@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useStore } from "../store/store";
 import { motion, AnimatePresence } from "framer-motion";
 import { db } from "../firebase";
-import { doc, setDoc, addDoc, collection, query, orderBy, limit, onSnapshot, deleteDoc } from "firebase/firestore";
+import { doc, setDoc, addDoc, collection, query, orderBy, limit, onSnapshot, deleteDoc, getDocs } from "firebase/firestore";
 import {
   Timer,
   Play,
@@ -13,7 +13,9 @@ import {
   Volume2,
   VolumeX,
   Minimize2,
-  CheckSquare
+  CheckSquare,
+  RotateCcw,
+  Coffee
 } from "lucide-react";
 
 // Subcomponent Imports
@@ -193,32 +195,114 @@ const PomodoroPage: React.FC = () => {
 
   // Real-time Firestore Study Sessions Log synchronization
   useEffect(() => {
-    if (!userUid) return;
-    const q = query(
-      collection(db, "users", userUid, "study_sessions"),
-      orderBy("timestamp", "desc"),
-      limit(20)
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const sessions = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data
-        };
-      });
-      setStudySessions(sessions);
-    }, (err) => {
-      console.error("Firestore study_sessions query error:", err);
-    });
-    return () => unsubscribe();
+    if (!userUid) {
+      console.warn("⚠️ userUid is not set, skipping session history fetch");
+      return;
+    }
+
+    console.log(`🔍 Fetching study sessions for user: ${userUid}`);
+
+    let unsubscribe: (() => void) | null = null;
+    let previousSessionCount = 0;
+
+    const fetchAndSubscribe = async () => {
+      try {
+        const q = query(
+          collection(db, "users", userUid, "study_sessions"),
+          orderBy("timestamp", "desc"),
+          limit(20)
+        );
+
+        // First, fetch existing data immediately for instant display
+        console.log(`📡 Executing query at path: users/${userUid}/study_sessions`);
+        const snapshot = await getDocs(q);
+        
+        console.log(`📊 Query returned ${snapshot.docs.length} documents`);
+        
+        const sessions = snapshot.docs.map(doc => {
+          const data = doc.data();
+          console.log(`📋 Session document:`, {
+            id: doc.id,
+            durationMinutes: data.durationMinutes,
+            sessionType: data.sessionType,
+            timestamp: new Date(data.timestamp).toLocaleString(),
+          });
+          return {
+            id: doc.id,
+            ...data
+          };
+        });
+        
+        setStudySessions(sessions);
+        previousSessionCount = sessions.length;
+        
+        if (sessions.length === 0) {
+          console.warn("⚠️ No sessions found in Firebase. Collection might be empty or permissions issue.");
+        } else {
+          console.log(`✅ Loaded ${sessions.length} previous study sessions from Firestore`);
+        }
+
+        // Then set up real-time listener for future updates
+        unsubscribe = onSnapshot(q, (liveSnapshot) => {
+          const liveSessions = liveSnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              ...data
+            };
+          });
+          
+          // Log when new sessions are detected
+          if (liveSessions.length > previousSessionCount) {
+            const newSessionCount = liveSessions.length - previousSessionCount;
+            console.log(`🎉 ${newSessionCount} new session(s) detected! Total sessions now: ${liveSessions.length}`, liveSessions[0]);
+          } else if (liveSessions.length < previousSessionCount) {
+            console.log(`🗑️ Session deleted. Total sessions now: ${liveSessions.length}`);
+          }
+          
+          setStudySessions(liveSessions);
+          previousSessionCount = liveSessions.length;
+        }, (err: any) => {
+          console.error("❌ Firestore study_sessions real-time listener error:", {
+            code: err.code,
+            message: err.message,
+            details: err
+          });
+          
+          // Check if it's a permission denied error
+          if (err.code === "permission-denied") {
+            console.error("🔒 Permission denied! Check Firestore rules for study_sessions collection");
+          }
+        });
+      } catch (err: any) {
+        console.error("❌ Firestore study_sessions fetch error:", {
+          code: err.code,
+          message: err.message,
+          details: err
+        });
+        
+        if (err.code === "permission-denied") {
+          console.error("🔒 Permission denied! Check Firestore rules for study_sessions collection");
+        }
+      }
+    };
+
+    fetchAndSubscribe();
+    
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [userUid]);
 
   // Real-time Firestore Live Feed synchronization
   useEffect(() => {
     const q = query(collection(db, "arena_feed"), orderBy("timestamp", "desc"), limit(15));
     const unsubscribe = onSnapshot(q, (snapshot) => {
+      console.log("📡 Arena feed snapshot received, doc count:", snapshot.docs.length);
       if (snapshot.empty) {
+        console.log("📭 Arena feed is empty, showing mock data");
         setFeedEvents([
           { id: 1, text: "Chloe Chen started a 50m session on Chemistry 📐", time: "2m ago" },
           { id: 2, text: "Alex Rivera entered the Focus Arena ⚡", time: "5m ago" },
@@ -245,7 +329,17 @@ const PomodoroPage: React.FC = () => {
           time: timeStr
         };
       });
+      console.log("✅ Arena feed loaded:", events.length, "events");
       setFeedEvents(events);
+    }, (err: any) => {
+      console.error("❌ Arena feed listener error:", {
+        code: err.code,
+        message: err.message,
+        details: err
+      });
+      if (err.code === "permission-denied") {
+        console.error("🔒 Permission denied! Check Firestore rules for arena_feed collection");
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -549,7 +643,7 @@ const PomodoroPage: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const handleSessionComplete = () => {
+  const handleSessionComplete = async () => {
     setIsRunning(false);
     setIsFullScreen(false); // Return to dashboard view on finish
     if (soundEnabled) {
@@ -570,16 +664,30 @@ const PomodoroPage: React.FC = () => {
       const nextTotalStudyTime = (totalStudyTime || 0) + storeWorkTime;
 
       incrementSession(storeWorkTime);
-      // Record detailed session in Firestore
-      recordStudySession({
-        durationMinutes: storeWorkTime,
-        sessionType: "pomodoro",
-        startTime,
-        endTime,
-        timestamp: endTime,
-        sessionNumber: nextSessionCount,
-        totalStudyTime: nextTotalStudyTime
-      });
+      
+      // Record detailed session in Firestore and wait for it to complete
+      try {
+        console.log("📝 Saving session to Firebase...", {
+          durationMinutes: storeWorkTime,
+          sessionType: "pomodoro",
+          sessionNumber: nextSessionCount,
+          timestamp: endTime
+        });
+        
+        await recordStudySession({
+          durationMinutes: storeWorkTime,
+          sessionType: "pomodoro",
+          startTime,
+          endTime,
+          timestamp: endTime,
+          sessionNumber: nextSessionCount,
+          totalStudyTime: nextTotalStudyTime
+        });
+        
+        console.log("✅ Session saved successfully to Firebase!");
+      } catch (err) {
+        console.error("❌ Failed to save session to Firebase:", err);
+      }
 
       showToast(`🎉 Session complete! Focused for ${storeWorkTime} mins & earned +${storeWorkTime * 2} XP!`);
       const commentText = arenaComment.trim() ? ` • "${arenaComment.trim()}"` : "";
@@ -588,8 +696,9 @@ const PomodoroPage: React.FC = () => {
       if (userUid) {
         addDoc(collection(db, "arena_feed"), {
           text: feedText,
-          timestamp: Date.now()
-        }).catch(console.error);
+          timestamp: Date.now(),
+          userId: userUid
+        }).catch(err => console.error("❌ Error adding to arena_feed:", err));
 
         setDoc(doc(db, "arena_sessions", userUid), {
           status: "online",
@@ -625,7 +734,7 @@ const PomodoroPage: React.FC = () => {
     }
   };
 
-  const handleStopwatchComplete = () => {
+  const handleStopwatchComplete = async () => {
     setIsRunning(false);
     setIsFullScreen(false);
     const endTime = Date.now();
@@ -638,23 +747,39 @@ const PomodoroPage: React.FC = () => {
       const nextTotalStudyTime = (totalStudyTime || 0) + mins;
 
       incrementSession(mins);
-      // Record detailed session in Firestore
-      recordStudySession({
-        durationMinutes: mins,
-        sessionType: "stopwatch",
-        startTime,
-        endTime,
-        timestamp: endTime,
-        sessionNumber: nextSessionCount,
-        totalStudyTime: nextTotalStudyTime
-      });
+      
+      // Record detailed session in Firestore and wait for it to complete
+      try {
+        console.log("📝 Saving stopwatch session to Firebase...", {
+          durationMinutes: mins,
+          sessionType: "stopwatch",
+          sessionNumber: nextSessionCount,
+          timestamp: endTime
+        });
+        
+        await recordStudySession({
+          durationMinutes: mins,
+          sessionType: "stopwatch",
+          startTime,
+          endTime,
+          timestamp: endTime,
+          sessionNumber: nextSessionCount,
+          totalStudyTime: nextTotalStudyTime
+        });
+        
+        console.log("✅ Stopwatch session saved successfully to Firebase!");
+      } catch (err) {
+        console.error("❌ Failed to save stopwatch session to Firebase:", err);
+      }
+      
       showToast(`🎉 Session complete! You focused for ${mins} mins and earned +${mins * 2} XP!`);
       const feedText = `${user.name} focused for ${mins}m in the Arena!${commentText} 🏆`;
       if (userUid) {
         addDoc(collection(db, "arena_feed"), {
           text: feedText,
-          timestamp: Date.now()
-        }).catch(console.error);
+          timestamp: Date.now(),
+          userId: userUid
+        }).catch(err => console.error("❌ Error adding stopwatch to arena_feed:", err));
       }
     } else {
       showToast("Focus for at least 1 minute to claim XP!", "info");
@@ -711,8 +836,9 @@ const PomodoroPage: React.FC = () => {
       if (userUid) {
         addDoc(collection(db, "arena_feed"), {
           text,
-          timestamp: Date.now()
-        }).catch(console.error);
+          timestamp: Date.now(),
+          userId: userUid
+        }).catch(err => console.error("❌ Error adding focus start to arena_feed:", err));
       }
     } else {
       showToast("Focus timer paused.", "info");
@@ -1372,21 +1498,21 @@ const PomodoroPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Distraction-Free Control Panel (Only Pause/Sound/Minimize) */}
+              {/* Distraction-Free Control Panel */}
               <div className="flex items-center justify-center gap-6 pt-4">
-                {/* Music/Sound option */}
+                {/* Reset Timer Button */}
                 <button
-                  onClick={() => setSoundEnabled(!soundEnabled)}
-                  className="p-3.5 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all cursor-pointer"
-                  title={soundEnabled ? "Mute alert" : "Enable alert sound"}
+                  onClick={handleReset}
+                  className="p-3.5 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all cursor-pointer hover:scale-105 active:scale-95 shadow-md hover:shadow-indigo-500/10"
+                  title="Reset Timer"
                 >
-                  {soundEnabled ? <Volume2 className="h-5 w-5 text-sky-500 dark:text-sky-400" /> : <VolumeX className="h-5 w-5" />}
+                  <RotateCcw className="h-5 w-5" />
                 </button>
 
                 {/* Main Play/Pause in Full Screen */}
                 <button
                   onClick={handleStartPause}
-                  className={`p-5 rounded-full text-white shadow-2xl transition-all transform active:scale-95 cursor-pointer ${timerType === "pomodoro"
+                  className={`p-5 rounded-full text-white shadow-2xl transition-all transform hover:scale-105 active:scale-95 cursor-pointer ${timerType === "pomodoro"
                     ? (mode === "work"
                       ? "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/20"
                       : mode === "short"
@@ -1399,6 +1525,21 @@ const PomodoroPage: React.FC = () => {
                   {isRunning ? <Pause className="h-6 w-6 fill-current" /> : <Play className="h-6 w-6 fill-current ml-0.5" />}
                 </button>
 
+                {/* Break Switch Button (Only in Pomodoro Mode) */}
+                {timerType === "pomodoro" && (
+                  <button
+                    onClick={() => handleModeChange(mode === "work" ? "short" : "work")}
+                    className="p-3.5 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all cursor-pointer hover:scale-105 active:scale-95 shadow-md hover:shadow-indigo-500/10"
+                    title={mode === "work" ? "Take a Break" : "Start Focus Session"}
+                  >
+                    {mode === "work" ? (
+                      <Coffee className="h-5 w-5 text-sky-500 dark:text-sky-400" />
+                    ) : (
+                      <Flame className="h-5 w-5 text-emerald-500 dark:text-emerald-400" />
+                    )}
+                  </button>
+                )}
+
                 {/* Exit actions */}
                 <div className="flex gap-2">
                   <button
@@ -1406,7 +1547,7 @@ const PomodoroPage: React.FC = () => {
                       setIsFullScreen(false);
                       showToast("Returned to Dashboard. Focus session is still active.", "info");
                     }}
-                    className="p-3.5 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all cursor-pointer"
+                    className="p-3.5 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all cursor-pointer hover:scale-105 active:scale-95 shadow-md hover:shadow-indigo-500/10"
                     title="Minimize (Return to Dashboard)"
                   >
                     <Minimize2 className="h-5 w-5" />

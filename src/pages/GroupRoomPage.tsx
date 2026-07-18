@@ -110,13 +110,10 @@ export const GroupRoomPage: React.FC = () => {
   const [isSpectating, setIsSpectating] = useState(false);
   const [spectatingLoading, setSpectatingLoading] = useState(false);
 
-  // Join Request State
-  //   null       = full member OR pure preview spectator
-  //   "pending"  = request sent, waiting for admin
-  //   "rejected" = admin declined
   const [joinRequestStatus, setJoinRequestStatus] = useState<null | "pending" | "rejected">(null);
   const [pendingRequests, setPendingRequests] = useState<any[]>([]);
   const [showRequestsPanel, setShowRequestsPanel] = useState(false);
+  const [requestToast, setRequestToast] = useState<any | null>(null);
 
 
 
@@ -378,6 +375,22 @@ export const GroupRoomPage: React.FC = () => {
       setPendingRequests(list);
       // Auto-open panel when new requests arrive
       if (list.length > 0) setShowRequestsPanel(true);
+
+      // Check for newly added requests to show toast notification
+      snap.docChanges().forEach((change) => {
+        if (change.type === "added") {
+          const reqData = { id: change.doc.id, ...change.doc.data() } as any;
+          // Only show toast if the request was created in the last 20 seconds
+          const isRecent = reqData.requestedAt && (Date.now() - reqData.requestedAt < 20000);
+          if (isRecent) {
+            setRequestToast(reqData);
+            // Auto dismiss toast after 8 seconds
+            setTimeout(() => {
+              setRequestToast((current: any) => (current?.id === reqData.id ? null : current));
+            }, 8000);
+          }
+        }
+      });
     });
     return unsub;
   }, [activeRoomId, userUid, roomDetails?.createdBy]);
@@ -2284,6 +2297,65 @@ export const GroupRoomPage: React.FC = () => {
                 )}
               </div>
 
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Join Request Toast for Admin */}
+      <AnimatePresence>
+        {requestToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            className="fixed bottom-6 right-6 md:bottom-8 md:right-8 left-6 md:left-auto z-[9999] max-w-sm w-[calc(100%-3rem)] md:w-96 glass-card bg-slate-900/95 dark:bg-slate-950/95 border border-violet-500/40 text-white rounded-3xl p-4 shadow-2xl shadow-violet-500/20 backdrop-blur-md"
+          >
+            <div className="flex items-start gap-3">
+              <img
+                src={requestToast.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${requestToast.userId}`}
+                alt={requestToast.name}
+                className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 object-cover shrink-0"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="text-[10px] uppercase font-black tracking-widest text-violet-400 mb-0.5">
+                  New Join Request
+                </div>
+                <p className="text-sm font-bold text-slate-100 truncate">
+                  {requestToast.name}
+                </p>
+                <p className="text-xs text-slate-400 mt-0.5 font-medium">
+                  wants to join your study room
+                </p>
+              </div>
+              <button
+                onClick={() => setRequestToast(null)}
+                className="text-slate-400 hover:text-white transition-colors cursor-pointer text-xs"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-800">
+              <button
+                onClick={async () => {
+                  const req = requestToast;
+                  setRequestToast(null);
+                  await handleRejectRequest(req);
+                }}
+                className="flex-1 py-2 rounded-xl text-xs font-black bg-slate-800 border border-slate-700 text-slate-350 hover:bg-rose-500/10 hover:border-rose-500/30 hover:text-rose-455 transition-all cursor-pointer text-center"
+              >
+                Decline
+              </button>
+              <button
+                onClick={async () => {
+                  const req = requestToast;
+                  setRequestToast(null);
+                  await handleAcceptRequest(req);
+                }}
+                className="flex-1 py-2 rounded-xl text-xs font-black bg-gradient-to-r from-violet-600 to-indigo-655 hover:from-violet-500 hover:to-indigo-500 text-white shadow-lg shadow-violet-600/25 cursor-pointer text-center"
+              >
+                ✓ Accept
+              </button>
             </div>
           </motion.div>
         )}

@@ -49,8 +49,8 @@ const navItems = [
 const bottomNavItems = [
   { name: "Home", path: "/", icon: LayoutDashboard },
   { name: "Todos", path: "/todos", icon: CheckSquare },
-  { name: "Rooms", path: "/rooms", icon: Users },
   { name: "Pomodoro", path: "/pomodoro", icon: Timer },
+  { name: "Rooms", path: "/rooms", icon: Users },
   { name: "Profile", path: "/profile", icon: UserCircle2 },
 ];
 
@@ -210,11 +210,10 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
                         {item.name}
                       </motion.span>
                       {showChatDot && (
-                        <span className={`absolute rounded-full bg-rose-500 border-2 border-white dark:border-slate-900 ${
-                          isExpanded 
-                            ? "right-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 flex items-center justify-center text-[8px] font-black text-white" 
-                            : "right-1.5 top-1.5 h-2.5 w-2.5"
-                        }`}>
+                        <span className={`absolute rounded-full bg-rose-500 border-2 border-white dark:border-slate-900 ${isExpanded
+                          ? "right-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 flex items-center justify-center text-[8px] font-black text-white"
+                          : "right-1.5 top-1.5 h-2.5 w-2.5"
+                          }`}>
                           {isExpanded && notifications.filter(n => n.type === "chat_message" && n.timestamp > lastChecked).length}
                         </span>
                       )}
@@ -332,7 +331,7 @@ const MainLayout: React.FC = () => {
       });
 
       w.document.title = "Study Mania - Pinned Notes";
-      
+
       // Copy all style tags & links
       document.querySelectorAll("style, link[rel='stylesheet']").forEach((styleEl) => {
         w.document.head.appendChild(styleEl.cloneNode(true));
@@ -342,7 +341,7 @@ const MainLayout: React.FC = () => {
       if (document.documentElement.classList.contains("dark")) {
         w.document.documentElement.classList.add("dark");
       }
-      
+
       w.document.body.className = "p-4 overflow-y-auto h-full w-full select-text bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 custom-scrollbar";
 
       // Listen for window close
@@ -913,11 +912,10 @@ const MainLayout: React.FC = () => {
           {/* Main Content Area */}
           <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
             {/* Interactive main outlet container */}
-            <main className={`flex-1 relative flex flex-col ${
-              isChatPage 
-                ? "overflow-hidden h-full w-full pb-16 lg:pb-0" 
-                : "overflow-y-auto px-4 md:px-8 lg:px-10 pb-16 lg:pb-0"
-            }`}>
+            <main className={`flex-1 relative flex flex-col ${isChatPage
+              ? "overflow-hidden h-full w-full pb-16 lg:pb-0"
+              : "overflow-y-auto px-4 md:px-8 lg:px-10 pb-16 lg:pb-0"
+              }`}>
               {/* Page content animations wrap */}
               <div className={(isChatPage || location.pathname === "/rooms") ? "w-full flex-grow flex flex-col" : "max-w-7xl mx-auto w-full flex-grow flex flex-col"}>
                 {isChatPage ? (
@@ -1017,7 +1015,7 @@ const MainLayout: React.FC = () => {
                           <MessageSquare className="h-4 w-4" />
                         </div>
                       </Link>
-                      
+
                       {/* Add Task */}
                       <Link
                         to="/todos"
@@ -1125,11 +1123,10 @@ const MainLayout: React.FC = () => {
                       <div className="flex items-start justify-between gap-3 mb-2 shrink-0">
                         <button
                           onClick={() => updateStickyNote(note.id, { completed: !note.completed })}
-                          className={`h-5 w-5 rounded-md border flex items-center justify-center shrink-0 transition-colors cursor-pointer ${
-                            note.completed
-                              ? "bg-slate-500 border-slate-500 text-white"
-                              : "border-slate-300 dark:border-slate-700 bg-white/40 hover:border-slate-450"
-                          }`}
+                          className={`h-5 w-5 rounded-md border flex items-center justify-center shrink-0 transition-colors cursor-pointer ${note.completed
+                            ? "bg-slate-500 border-slate-500 text-white"
+                            : "border-slate-300 dark:border-slate-700 bg-white/40 hover:border-slate-450"
+                            }`}
                         >
                           {note.completed && <Check className="h-3.5 w-3.5 text-white" />}
                         </button>
@@ -1158,11 +1155,10 @@ const MainLayout: React.FC = () => {
                           value={note.content}
                           onChange={e => updateStickyNote(note.id, { content: e.target.value })}
                           placeholder="Pinned note..."
-                          className={`w-full h-full bg-transparent resize-none border-none outline-none focus:ring-0 p-0 text-xs font-semibold leading-normal custom-scrollbar ${
-                            note.completed
-                              ? "line-through text-slate-455 dark:text-slate-500 font-medium"
-                              : "text-slate-800 dark:text-slate-100"
-                          }`}
+                          className={`w-full h-full bg-transparent resize-none border-none outline-none focus:ring-0 p-0 text-xs font-semibold leading-normal custom-scrollbar ${note.completed
+                            ? "line-through text-slate-455 dark:text-slate-500 font-medium"
+                            : "text-slate-800 dark:text-slate-100"
+                            }`}
                         />
                       </div>
                     </div>
@@ -1247,7 +1243,7 @@ const PinnedCard: React.FC<PinnedCardProps> = ({ note, index, updateStickyNote, 
       // Keep inside screen viewport
       const maxLeft = window.innerWidth - size.width - 10;
       const maxTop = window.innerHeight - size.height - 10;
-      
+
       const newLeft = Math.max(10, Math.min(maxLeft, startLeft + dx));
       const newTop = Math.max(10, Math.min(maxTop, startTop + dy));
 
@@ -1340,11 +1336,10 @@ const PinnedCard: React.FC<PinnedCardProps> = ({ note, index, updateStickyNote, 
       >
         <button
           onClick={() => updateStickyNote(note.id, { completed: !note.completed })}
-          className={`h-5 w-5 rounded-md border flex items-center justify-center shrink-0 transition-colors cursor-pointer ${
-            note.completed
-              ? "bg-slate-500 border-slate-500 text-white"
-              : "border-slate-300 dark:border-slate-700 bg-white/40 hover:border-slate-455"
-          }`}
+          className={`h-5 w-5 rounded-md border flex items-center justify-center shrink-0 transition-colors cursor-pointer ${note.completed
+            ? "bg-slate-500 border-slate-500 text-white"
+            : "border-slate-300 dark:border-slate-700 bg-white/40 hover:border-slate-455"
+            }`}
         >
           {note.completed && <Check className="h-3.5 w-3.5 text-white" />}
         </button>
@@ -1373,11 +1368,10 @@ const PinnedCard: React.FC<PinnedCardProps> = ({ note, index, updateStickyNote, 
           value={note.content}
           onChange={e => updateStickyNote(note.id, { content: e.target.value })}
           placeholder="Pinned note..."
-          className={`w-full h-full bg-transparent resize-none border-none outline-none focus:ring-0 p-0 text-xs font-semibold leading-normal custom-scrollbar ${
-            note.completed
-              ? "line-through text-slate-455 dark:text-slate-500 font-medium"
-              : "text-slate-800 dark:text-slate-100"
-          }`}
+          className={`w-full h-full bg-transparent resize-none border-none outline-none focus:ring-0 p-0 text-xs font-semibold leading-normal custom-scrollbar ${note.completed
+            ? "line-through text-slate-455 dark:text-slate-500 font-medium"
+            : "text-slate-800 dark:text-slate-100"
+            }`}
         />
       </div>
 

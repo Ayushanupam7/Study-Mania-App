@@ -103,6 +103,10 @@ export const GroupRoomPage: React.FC = () => {
   const [availableRooms, setAvailableRooms] = useState<any[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(false);
 
+  // Spectator / Preview Mode (user is viewing a room without joining)
+  const [isSpectating, setIsSpectating] = useState(false);
+  const [spectatingLoading, setSpectatingLoading] = useState(false);
+
 
 
   // Refs for tracking wall clock time and syncing intervals
@@ -248,7 +252,7 @@ export const GroupRoomPage: React.FC = () => {
 
   // Room Subscriptions (Real-time Firestore)
   useEffect(() => {
-    if (!activeRoomId || !userUid) return;
+    if (!activeRoomId) return;
 
     // 0. Listen for room document (metadata)
     const roomRef = doc(db, "rooms", activeRoomId);
@@ -328,9 +332,9 @@ export const GroupRoomPage: React.FC = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Sync member document to database when state variables change
+  // Sync member document to database when state variables change (only when not spectating)
   useEffect(() => {
-    if (!activeRoomId || !userUid) return;
+    if (!activeRoomId || !userUid || isSpectating) return;
 
     const activeTask = todos.find((t) => t.id === selectedTaskId);
     const taskTitle = selectedTaskId === "general"
@@ -344,7 +348,7 @@ export const GroupRoomPage: React.FC = () => {
       timerMode,
       taskTitle
     );
-  }, [timerRunning, timerType, timerMode, selectedTaskId, customGoal, activeRoomId, userUid, user.xp, user.level]);
+  }, [timerRunning, timerType, timerMode, selectedTaskId, customGoal, activeRoomId, userUid, isSpectating, user.xp, user.level]);
 
   // Fetch selected member's tasks
   useEffect(() => {
@@ -832,24 +836,7 @@ export const GroupRoomPage: React.FC = () => {
                     {availableRooms.map((room) => (
                       <div
                         key={room.roomId}
-                        onClick={async () => {
-                          if (lobbyLoading) return;
-                          setLobbyLoading(true);
-                          setLobbyError("");
-                          try {
-                            await joinRoom(room.roomId);
-                            await addDoc(collection(db, "rooms", room.roomId, "messages"), {
-                              type: "system",
-                              text: `👋 ${user.name} joined the room.`,
-                              timestamp: Date.now()
-                            });
-                          } catch (err: any) {
-                            setLobbyError(err.message || "Failed to join room.");
-                          } finally {
-                            setLobbyLoading(false);
-                          }
-                        }}
-                        className="group flex items-center justify-between p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/70 hover:border-indigo-400/50 dark:hover:border-indigo-500/50 hover:bg-white dark:hover:bg-slate-900 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md hover:scale-[1.02] hover:-translate-y-0.5"
+                        className="group flex items-center justify-between p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/70 hover:border-indigo-400/50 dark:hover:border-indigo-500/50 hover:bg-white dark:hover:bg-slate-900 transition-all duration-300 shadow-sm hover:shadow-md hover:scale-[1.02] hover:-translate-y-0.5"
                       >
                         <div className="min-w-0 flex-1 pr-2">
                           <span className="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors block truncate">
@@ -865,12 +852,58 @@ export const GroupRoomPage: React.FC = () => {
                             </span>
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 group-hover:bg-indigo-600 text-white rounded-xl text-[10px] font-black shadow-sm transition-all duration-200 shrink-0"
-                        >
-                          Join
-                        </button>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {/* Preview button */}
+                          <button
+                            type="button"
+                            disabled={lobbyLoading}
+                            onClick={async () => {
+                              if (lobbyLoading) return;
+                              setLobbyLoading(true);
+                              setLobbyError("");
+                              try {
+                                // Preview only — do NOT write member doc or post system message
+                                await joinRoom(room.roomId);
+                                setIsSpectating(true);
+                                setShowLobby(false);
+                              } catch (err: any) {
+                                setLobbyError(err.message || "Failed to load room.");
+                              } finally {
+                                setLobbyLoading(false);
+                              }
+                            }}
+                            className="px-2.5 py-2 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 rounded-xl text-[10px] font-black shadow-sm transition-all duration-200"
+                          >
+                            Preview
+                          </button>
+                          {/* Join button */}
+                          <button
+                            type="button"
+                            disabled={lobbyLoading}
+                            onClick={async () => {
+                              if (lobbyLoading) return;
+                              setLobbyLoading(true);
+                              setLobbyError("");
+                              try {
+                                await joinRoom(room.roomId);
+                                await addDoc(collection(db, "rooms", room.roomId, "messages"), {
+                                  type: "system",
+                                  text: `👋 ${user.name} joined the room.`,
+                                  timestamp: Date.now()
+                                });
+                                setIsSpectating(false);
+                                setShowLobby(false);
+                              } catch (err: any) {
+                                setLobbyError(err.message || "Failed to join room.");
+                              } finally {
+                                setLobbyLoading(false);
+                              }
+                            }}
+                            className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-[10px] font-black shadow-sm transition-all duration-200"
+                          >
+                            Join
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -887,6 +920,66 @@ export const GroupRoomPage: React.FC = () => {
             exit={{ opacity: 0 }}
             className="flex flex-col gap-6"
           >
+            {/* ---- Spectator Banner ---- */}
+            {isSpectating && (
+              <motion.div
+                initial={{ opacity: 0, y: -12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="relative overflow-hidden rounded-3xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-amber-500/10 dark:from-amber-500/15 dark:via-orange-500/10 dark:to-amber-500/15 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl shadow-amber-500/5"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-amber-400/5 to-orange-400/5 pointer-events-none" />
+                <div className="flex items-center gap-3 z-10">
+                  <div className="p-2.5 bg-amber-500/20 border border-amber-500/30 rounded-2xl shrink-0">
+                    <span className="text-lg select-none">👁️</span>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase font-black tracking-widest text-amber-600 dark:text-amber-400 mb-0.5">Spectator Mode</div>
+                    <div className="text-sm font-black text-slate-800 dark:text-white">You're previewing <span className="text-amber-600 dark:text-amber-400">{activeRoomName}</span></div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Join the room to chat, use the timer, and interact with scholars.</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 z-10 shrink-0">
+                  <button
+                    onClick={() => {
+                      leaveRoom();
+                      setMembers([]);
+                      setMessages([]);
+                      setSelectedMember(null);
+                      setIsSpectating(false);
+                      setShowLobby(true);
+                    }}
+                    className="flex items-center gap-1.5 px-4 py-2.5 bg-white/60 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-2xl text-xs font-bold cursor-pointer transition-all hover:bg-white dark:hover:bg-slate-900"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    Back
+                  </button>
+                  <button
+                    disabled={spectatingLoading}
+                    onClick={async () => {
+                      if (!activeRoomId) return;
+                      setSpectatingLoading(true);
+                      try {
+                        await addDoc(collection(db, "rooms", activeRoomId, "messages"), {
+                          type: "system",
+                          text: `👋 ${user.name} joined the room.`,
+                          timestamp: Date.now()
+                        });
+                        setIsSpectating(false);
+                      } catch (err) {
+                        console.error("Error joining room from spectator:", err);
+                      } finally {
+                        setSpectatingLoading(false);
+                      }
+                    }}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-white rounded-2xl text-xs font-black shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 transition-all active:scale-95 cursor-pointer disabled:opacity-60"
+                  >
+                    <Users className="w-4 h-4" />
+                    {spectatingLoading ? "Joining..." : "Join Room"}
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
             {/* Header / Room Topbar */}
             <div className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-white/85 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-3xl gap-4 shadow-lg backdrop-blur-md text-slate-800 dark:text-slate-100">
               <div className="flex items-center gap-3">
@@ -922,7 +1015,7 @@ export const GroupRoomPage: React.FC = () => {
                   ) : (
                     <div className="flex items-center gap-2">
                       <h2 className="text-lg font-black">{activeRoomName}</h2>
-                      {roomDetails?.createdBy === userUid && (
+                      {!isSpectating && roomDetails?.createdBy === userUid && (
                         <button
                           onClick={() => {
                             setRenameInput(roomDetails?.name || activeRoomName || "");
@@ -956,7 +1049,7 @@ export const GroupRoomPage: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-3 self-start md:self-center">
-                {roomDetails?.createdBy === userUid && (
+                {!isSpectating && roomDetails?.createdBy === userUid && (
                   <button
                     onClick={handleDeleteRoom}
                     className="flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-2xl text-xs font-black cursor-pointer transition-all active:scale-95 shadow-md shadow-red-600/10 hover:shadow-red-600/20"
@@ -965,13 +1058,15 @@ export const GroupRoomPage: React.FC = () => {
                     <span>Delete Room</span>
                   </button>
                 )}
-                <button
-                  onClick={handleLeaveRoom}
-                  className="flex items-center justify-center gap-2 px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 rounded-2xl text-xs font-bold cursor-pointer transition-all active:scale-95"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span>Leave Room</span>
-                </button>
+                {!isSpectating && (
+                  <button
+                    onClick={handleLeaveRoom}
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 rounded-2xl text-xs font-bold cursor-pointer transition-all active:scale-95"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Leave Room</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1102,7 +1197,7 @@ export const GroupRoomPage: React.FC = () => {
                                   <span>Inspect</span>
                                 </button>
                               </div>
-                              {!isMe && (
+                              {!isMe && !isSpectating && (
                                 <div className="flex items-center gap-1">
                                   {([
                                     { type: "spark", icon: Zap, color: "text-amber-500 hover:bg-amber-500/10 border-amber-500/10" },
@@ -1130,6 +1225,9 @@ export const GroupRoomPage: React.FC = () => {
                                     );
                                   })}
                                 </div>
+                              )}
+                              {!isMe && isSpectating && (
+                                <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 italic">Join to cheer</span>
                               )}
                             </div>
                           </div>
@@ -1493,7 +1591,16 @@ export const GroupRoomPage: React.FC = () => {
             </div>
 
             {/* 3. Integrated Timer Hub */}
-            <div className="glass-card bg-white/80 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xl relative overflow-hidden text-slate-800 dark:text-slate-100">
+            <div className={`glass-card bg-white/80 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xl relative overflow-hidden text-slate-800 dark:text-slate-100 ${isSpectating ? "opacity-60 pointer-events-none select-none" : ""}`}>
+              {isSpectating && (
+                <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/60 dark:bg-slate-900/60 backdrop-blur-[2px] rounded-3xl">
+                  <div className="flex flex-col items-center gap-2 text-center px-4">
+                    <span className="text-2xl select-none">🔒</span>
+                    <span className="text-sm font-black text-slate-700 dark:text-slate-200">Join to use the Focus Timer</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">Members can track their study sessions here.</span>
+                  </div>
+                </div>
+              )}
               <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 blur-3xl rounded-full" />
 
               <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4 mb-4 gap-3">
@@ -1742,24 +1849,30 @@ export const GroupRoomPage: React.FC = () => {
                 </div>
 
                 {/* Input Form */}
-                <form
-                  onSubmit={handleSendMessage}
-                  className="flex gap-2 border-t border-slate-200 dark:border-slate-800 pt-3 shrink-0"
-                >
-                  <input
-                    type="text"
-                    placeholder="Type a message..."
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 text-xs font-semibold text-slate-800 dark:text-slate-200"
-                  />
-                  <button
-                    type="submit"
-                    className="p-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl cursor-pointer transition-colors"
+                {isSpectating ? (
+                  <div className="flex items-center justify-center gap-2 border-t border-slate-200 dark:border-slate-800 pt-3 shrink-0 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950/60">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">🔒 Join the room to send messages</span>
+                  </div>
+                ) : (
+                  <form
+                    onSubmit={handleSendMessage}
+                    className="flex gap-2 border-t border-slate-200 dark:border-slate-800 pt-3 shrink-0"
                   >
-                    <Send className="w-3.5 h-3.5" />
-                  </button>
-                </form>
+                    <input
+                      type="text"
+                      placeholder="Type a message..."
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 text-xs font-semibold text-slate-800 dark:text-slate-200"
+                    />
+                    <button
+                      type="submit"
+                      className="p-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl cursor-pointer transition-colors"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                    </button>
+                  </form>
+                )}
               </div>
 
               {/* 2. My Tasks Today */}
@@ -1838,35 +1951,41 @@ export const GroupRoomPage: React.FC = () => {
                 </div>
 
                 {/* Add Todo Form */}
-                <form
-                  onSubmit={handleCreateTodo}
-                  className="border-t border-slate-200 dark:border-slate-800 pt-3 flex flex-col gap-2 shrink-0"
-                >
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Add task for today..."
-                      value={newTodoTitle}
-                      onChange={(e) => setNewTodoTitle(e.target.value)}
-                      className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 text-xs font-semibold text-slate-800 dark:text-slate-200"
-                    />
-                    <select
-                      value={newTodoPriority}
-                      onChange={(e) => setNewTodoPriority(e.target.value as any)}
-                      className="px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-bold text-slate-650 dark:text-slate-300 cursor-pointer focus:outline-none"
-                    >
-                      <option value="high">🔴 High</option>
-                      <option value="medium">🟡 Med</option>
-                      <option value="low">🟢 Low</option>
-                    </select>
-                    <button
-                      type="submit"
-                      className="p-2 bg-indigo-600 hover:bg-indigo-600 text-white rounded-xl cursor-pointer transition-colors"
-                    >
-                      <PlusCircle className="w-3.5 h-3.5" />
-                    </button>
+                {isSpectating ? (
+                  <div className="flex items-center justify-center gap-2 border-t border-slate-200 dark:border-slate-800 pt-3 shrink-0 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950/60">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">🔒 Join the room to add tasks</span>
                   </div>
-                </form>
+                ) : (
+                  <form
+                    onSubmit={handleCreateTodo}
+                    className="border-t border-slate-200 dark:border-slate-800 pt-3 flex flex-col gap-2 shrink-0"
+                  >
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Add task for today..."
+                        value={newTodoTitle}
+                        onChange={(e) => setNewTodoTitle(e.target.value)}
+                        className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 text-xs font-semibold text-slate-800 dark:text-slate-200"
+                      />
+                      <select
+                        value={newTodoPriority}
+                        onChange={(e) => setNewTodoPriority(e.target.value as any)}
+                        className="px-2 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-bold text-slate-650 dark:text-slate-300 cursor-pointer focus:outline-none"
+                      >
+                        <option value="high">🔴 High</option>
+                        <option value="medium">🟡 Med</option>
+                        <option value="low">🟢 Low</option>
+                      </select>
+                      <button
+                        type="submit"
+                        className="p-2 bg-indigo-600 hover:bg-indigo-600 text-white rounded-xl cursor-pointer transition-colors"
+                      >
+                        <PlusCircle className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
 
             </div>

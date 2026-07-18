@@ -183,6 +183,16 @@ interface PomodoroState {
   checkDailyReset: () => void;
 }
 
+export interface RoomState {
+  activeRoomId: string | null;
+  activeRoomName: string | null;
+  createRoom: (roomName: string) => Promise<string>;
+  joinRoom: (roomId: string) => Promise<string>;
+  leaveRoom: () => Promise<void>;
+  updateRoomTimerStatus: (running: boolean, secondsLeft: number, timerType: "pomodoro" | "stopwatch", mode: "work" | "short" | "long", activeTaskTitle: string) => Promise<void>;
+  renameRoom: (roomId: string, newName: string) => Promise<void>;
+}
+
 export type StoreState = UIState &
   AuthState &
   TodoState &
@@ -190,7 +200,8 @@ export type StoreState = UIState &
   CountdownState &
   NoteState &
   StickyNoteState &
-  PomodoroState;
+  PomodoroState &
+  RoomState;
 
 const defaultUser: UserProfile = {
   name: "Scholar Mania",
@@ -991,6 +1002,109 @@ export const useStore = create<StoreState>()(
             }
             return {};
           }),
+
+        // Group Study Rooms Slice
+        activeRoomId: null,
+        activeRoomName: null,
+
+        createRoom: async (roomName) => {
+          const uid = get().userUid;
+          if (!uid) throw new Error("Not authenticated");
+          const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+          const roomRef = doc(db, "rooms", code);
+          await setDoc(roomRef, {
+            roomId: code,
+            name: roomName,
+            createdBy: uid,
+            createdAt: Date.now(),
+            activeMemberCount: 1
+          });
+          set({ activeRoomId: code, activeRoomName: roomName });
+          return code;
+        },
+
+        joinRoom: async (roomId) => {
+          const uid = get().userUid;
+          if (!uid) throw new Error("Not authenticated");
+          const cleanedId = roomId.trim().toUpperCase();
+          const roomRef = doc(db, "rooms", cleanedId);
+          const roomSnap = await getDoc(roomRef);
+          if (!roomSnap.exists()) {
+            throw new Error("Room not found. Please check the code.");
+          }
+          const roomData = roomSnap.data();
+          set({ activeRoomId: cleanedId, activeRoomName: roomData.name || "Study Room" });
+          return roomData.name || "Study Room";
+        },
+
+        leaveRoom: async () => {
+          const uid = get().userUid;
+          const roomId = get().activeRoomId;
+          if (uid && roomId) {
+            await deleteDoc(doc(db, "rooms", roomId, "members", uid)).catch(console.error);
+            await setDoc(doc(db, "arena_sessions", uid), {
+              status: "online",
+              activity: "",
+              sessionStartTime: null,
+              lastActive: Date.now()
+            }, { merge: true }).catch(console.error);
+          }
+          set({ activeRoomId: null, activeRoomName: null });
+        },
+
+        renameRoom: async (roomId, newName) => {
+          if (!roomId || !newName.trim()) return;
+          const roomRef = doc(db, "rooms", roomId);
+          await setDoc(roomRef, { name: newName.trim() }, { merge: true });
+          set({ activeRoomName: newName.trim() });
+        },
+
+        updateRoomTimerStatus: async (running, secondsLeft, timerType, mode, activeTaskTitle) => {
+          const uid = get().userUid;
+          const roomId = get().activeRoomId;
+          if (!uid || !roomId) return;
+          try {
+            const elapsed = timerType === "pomodoro"
+              ? ((mode === "work" ? 25 : mode === "short" ? 5 : 15) * 60 - secondsLeft)
+              : secondsLeft;
+
+            const memberStatus = running ? (mode === "work" ? "studying" : "break") : "idle";
+
+            // Update room member document
+            await setDoc(doc(db, "rooms", roomId, "members", uid), {
+              userId: uid,
+              name: get().user.name,
+              avatar: get().user.avatar,
+              level: get().user.level,
+              xp: get().user.xp || 0,
+              todayMinutes: get().todayMinutes || 0,
+              status: memberStatus,
+              timerType,
+              timerRunning: running,
+              secondsLeft,
+              activeTask: activeTaskTitle || "",
+              lastActive: Date.now()
+            }, { merge: true });
+
+            // Sync with global Arena Presence
+            await setDoc(doc(db, "arena_sessions", uid), {
+              name: get().user.name,
+              avatar: get().user.avatar,
+              status: running ? (mode === "work" ? "studying" : "online") : "online",
+              activity: running && mode === "work" ? activeTaskTitle : "",
+              comment: "",
+              secondsBase: get().todayMinutes * 60 + (running ? elapsed : 0),
+              totalStudyTime: get().totalStudyTime || 0,
+              sessionStartTime: running ? Date.now() : null,
+              timerType,
+              pomodoroDuration: timerType === "pomodoro" ? (mode === "work" ? 25 * 60 : 0) : 0,
+              lastActive: Date.now()
+            }, { merge: true });
+
+          } catch (e) {
+            console.error("Error updating room/arena timer status: ", e);
+          }
+        },
       }),
       { name: "studymania-storage" }
     ),

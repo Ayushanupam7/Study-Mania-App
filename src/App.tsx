@@ -12,6 +12,7 @@ import NotesPage from "./pages/NotesPage.tsx";
 import ProfilePage from "./pages/ProfilePage.tsx";
 import ChatPage from "./pages/ChatPage.tsx";
 import LoginPage from "./pages/LoginPage.tsx";
+import GroupRoomPage from "./pages/GroupRoomPage.tsx";
 import { useStore } from "./store/store";
 import { auth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
@@ -76,6 +77,7 @@ const App: React.FC = () => {
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/notes" element={<NotesPage />} />
             <Route path="/chats" element={<ChatPage />} />
+            <Route path="/rooms" element={<GroupRoomPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

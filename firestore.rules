@@ -9,7 +9,8 @@ service cloud.firestore {
 
       // User's private subcollections (Only the owner can read/write)
       match /todos/{todoId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && request.auth.uid == userId;
       }
       match /habits/{habitId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
@@ -112,6 +113,28 @@ service cloud.firestore {
       allow create: if request.auth != null;
       allow update: if request.auth != null && request.auth.uid == userId;
       allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // 7. Group Study Rooms
+    match /rooms/{roomId} {
+      allow read, create: if request.auth != null;
+      allow update, delete: if request.auth != null && (resource == null || resource.data.createdBy == request.auth.uid);
+
+      // Members in the room
+      match /members/{memberId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && request.auth.uid == memberId;
+      }
+
+      // Cheers sent in the room
+      match /cheers/{cheerId} {
+        allow read, create, delete: if request.auth != null;
+      }
+
+      // Messages and activity feed sent in the room
+      match /messages/{messageId} {
+        allow read, create, delete: if request.auth != null;
+      }
     }
   }
 }

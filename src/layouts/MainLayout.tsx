@@ -24,6 +24,7 @@ import {
   Plus,
   Bell,
   UserPlus,
+  Users,
   MessageSquare,
   UserCircle2,
   Pin,
@@ -40,6 +41,7 @@ const navItems = [
   { name: "Countdowns", path: "/countdowns", icon: Calendar },
   { name: "Pomodoro", path: "/pomodoro", icon: Timer },
   { name: "Chats", path: "/chats", icon: MessageSquare },
+  { name: "Study Rooms", path: "/rooms", icon: Users },
   { name: "Analytics", path: "/analytics", icon: BarChart2 },
   { name: "Notes", path: "/notes", icon: BookOpen },
 ];
@@ -47,8 +49,8 @@ const navItems = [
 const bottomNavItems = [
   { name: "Home", path: "/", icon: LayoutDashboard },
   { name: "Todos", path: "/todos", icon: CheckSquare },
+  { name: "Rooms", path: "/rooms", icon: Users },
   { name: "Pomodoro", path: "/pomodoro", icon: Timer },
-  { name: "Habits", path: "/habits", icon: Flame },
   { name: "Profile", path: "/profile", icon: UserCircle2 },
 ];
 
@@ -917,7 +919,7 @@ const MainLayout: React.FC = () => {
                 : "overflow-y-auto px-4 md:px-8 lg:px-10 pb-16 lg:pb-0"
             }`}>
               {/* Page content animations wrap */}
-              <div className={isChatPage ? "h-full w-full" : "max-w-7xl mx-auto w-full flex-grow flex flex-col"}>
+              <div className={(isChatPage || location.pathname === "/rooms") ? "w-full flex-grow flex flex-col" : "max-w-7xl mx-auto w-full flex-grow flex flex-col"}>
                 {isChatPage ? (
                   <Outlet />
                 ) : (

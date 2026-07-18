@@ -8,8 +8,10 @@ import {
   onSnapshot,
   addDoc,
   deleteDoc,
+  setDoc,
   query,
   orderBy,
+  where,
   limit,
   getDocs,
 } from "firebase/firestore";
@@ -107,6 +109,14 @@ export const GroupRoomPage: React.FC = () => {
   const [isSpectating, setIsSpectating] = useState(false);
   const [spectatingLoading, setSpectatingLoading] = useState(false);
 
+  // Join Request State
+  //   null       = full member OR pure preview spectator
+  //   "pending"  = request sent, waiting for admin
+  //   "rejected" = admin declined
+  const [joinRequestStatus, setJoinRequestStatus] = useState<null | "pending" | "rejected">(null);
+  const [pendingRequests, setPendingRequests] = useState<any[]>([]);
+  const [showRequestsPanel, setShowRequestsPanel] = useState(false);
+
 
 
   // Refs for tracking wall clock time and syncing intervals
@@ -147,15 +157,19 @@ export const GroupRoomPage: React.FC = () => {
     try {
       const code = roomCodeInput.trim().toUpperCase();
       await joinRoom(code);
-      // Join system messages in room
-      await addDoc(collection(db, "rooms", code, "messages"), {
-        type: "system",
-        text: `👋 ${user.name} joined the room.`,
-        timestamp: Date.now()
+      // Send a join request — admin must approve
+      await setDoc(doc(db, "rooms", code, "joinRequests", userUid!), {
+        userId: userUid,
+        name: user.name,
+        avatar: user.avatar || "",
+        requestedAt: Date.now(),
+        status: "pending"
       });
+      setJoinRequestStatus("pending");
+      setIsSpectating(true);
       setShowLobby(false);
     } catch (err: any) {
-      setLobbyError(err.message || "Failed to join study room. Please check the code.");
+      setLobbyError(err.message || "Failed to send join request. Please check the code.");
     } finally {
       setLobbyLoading(false);
     }
@@ -326,6 +340,44 @@ export const GroupRoomPage: React.FC = () => {
       unsubCheers();
     };
   }, [activeRoomId, userUid]);
+
+  // Admin: Listen for pending join requests in real time
+  useEffect(() => {
+    if (!activeRoomId || !userUid || !roomDetails) return;
+    if (roomDetails.createdBy !== userUid) return; // only admin
+
+    const q = query(
+      collection(db, "rooms", activeRoomId, "joinRequests"),
+      where("status", "==", "pending")
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setPendingRequests(list);
+      // Auto-open panel when new requests arrive
+      if (list.length > 0) setShowRequestsPanel(true);
+    });
+    return unsub;
+  }, [activeRoomId, userUid, roomDetails]);
+
+  // Requester: Watch own join-request doc for admin decision
+  useEffect(() => {
+    if (!activeRoomId || !userUid || joinRequestStatus !== "pending") return;
+
+    const reqRef = doc(db, "rooms", activeRoomId, "joinRequests", userUid);
+    const unsub = onSnapshot(reqRef, (snap) => {
+      if (!snap.exists()) return;
+      const data = snap.data();
+      if (data.status === "accepted") {
+        setIsSpectating(false);
+        setJoinRequestStatus(null);
+        // Clean up the request doc
+        deleteDoc(reqRef).catch(console.error);
+      } else if (data.status === "rejected") {
+        setJoinRequestStatus("rejected");
+      }
+    });
+    return unsub;
+  }, [activeRoomId, userUid, joinRequestStatus]);
 
   // Scroll to bottom of chat
   useEffect(() => {
@@ -665,6 +717,34 @@ export const GroupRoomPage: React.FC = () => {
   };
 
   // ----------------------------------------------------
+  // Join Request Handlers (Admin)
+  // ----------------------------------------------------
+  const handleAcceptRequest = async (request: any) => {
+    if (!activeRoomId) return;
+    try {
+      await setDoc(doc(db, "rooms", activeRoomId, "joinRequests", request.userId),
+        { status: "accepted" }, { merge: true });
+      await addDoc(collection(db, "rooms", activeRoomId, "messages"), {
+        type: "system",
+        text: `✅ ${request.name} was accepted into the room!`,
+        timestamp: Date.now()
+      });
+    } catch (err) {
+      console.error("Error accepting request:", err);
+    }
+  };
+
+  const handleRejectRequest = async (request: any) => {
+    if (!activeRoomId) return;
+    try {
+      await setDoc(doc(db, "rooms", activeRoomId, "joinRequests", request.userId),
+        { status: "rejected" }, { merge: true });
+    } catch (err) {
+      console.error("Error rejecting request:", err);
+    }
+  };
+
+  // ----------------------------------------------------
   // Timer Display Helpers
   // ----------------------------------------------------
   const formatTime = (secs: number) => {
@@ -876,7 +956,7 @@ export const GroupRoomPage: React.FC = () => {
                           >
                             Preview
                           </button>
-                          {/* Join button */}
+                          {/* Join button → sends a join request to the admin */}
                           <button
                             type="button"
                             disabled={lobbyLoading}
@@ -886,22 +966,26 @@ export const GroupRoomPage: React.FC = () => {
                               setLobbyError("");
                               try {
                                 await joinRoom(room.roomId);
-                                await addDoc(collection(db, "rooms", room.roomId, "messages"), {
-                                  type: "system",
-                                  text: `👋 ${user.name} joined the room.`,
-                                  timestamp: Date.now()
+                                // Send join request — admin must approve
+                                await setDoc(doc(db, "rooms", room.roomId, "joinRequests", userUid!), {
+                                  userId: userUid,
+                                  name: user.name,
+                                  avatar: user.avatar || "",
+                                  requestedAt: Date.now(),
+                                  status: "pending"
                                 });
-                                setIsSpectating(false);
+                                setJoinRequestStatus("pending");
+                                setIsSpectating(true);
                                 setShowLobby(false);
                               } catch (err: any) {
-                                setLobbyError(err.message || "Failed to join room.");
+                                setLobbyError(err.message || "Failed to send join request.");
                               } finally {
                                 setLobbyLoading(false);
                               }
                             }}
                             className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-[10px] font-black shadow-sm transition-all duration-200"
                           >
-                            Join
+                            Request
                           </button>
                         </div>
                       </div>
@@ -920,63 +1004,231 @@ export const GroupRoomPage: React.FC = () => {
             exit={{ opacity: 0 }}
             className="flex flex-col gap-6"
           >
-            {/* ---- Spectator Banner ---- */}
+            {/* ---- Spectator / Request Banner ---- */}
             {isSpectating && (
               <motion.div
+                key={joinRequestStatus ?? "preview"}
                 initial={{ opacity: 0, y: -12 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="relative overflow-hidden rounded-3xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-amber-500/10 dark:from-amber-500/15 dark:via-orange-500/10 dark:to-amber-500/15 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl shadow-amber-500/5"
+                className={`relative overflow-hidden rounded-3xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl ${
+                  joinRequestStatus === "pending"
+                    ? "border border-indigo-500/30 bg-gradient-to-r from-indigo-500/10 via-purple-500/5 to-indigo-500/10 dark:from-indigo-500/15 dark:via-purple-500/10 dark:to-indigo-500/15 shadow-indigo-500/5"
+                    : joinRequestStatus === "rejected"
+                    ? "border border-rose-500/30 bg-gradient-to-r from-rose-500/10 via-red-500/5 to-rose-500/10 dark:from-rose-500/15 dark:via-red-500/10 dark:to-rose-500/15 shadow-rose-500/5"
+                    : "border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-amber-500/10 dark:from-amber-500/15 dark:via-orange-500/10 dark:to-amber-500/15 shadow-amber-500/5"
+                }`}
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-amber-400/5 to-orange-400/5 pointer-events-none" />
-                <div className="flex items-center gap-3 z-10">
-                  <div className="p-2.5 bg-amber-500/20 border border-amber-500/30 rounded-2xl shrink-0">
-                    <span className="text-lg select-none">👁️</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent pointer-events-none" />
+
+                {/* ---- PENDING STATE ---- */}
+                {joinRequestStatus === "pending" && (
+                  <>
+                    <div className="flex items-center gap-3 z-10">
+                      <div className="p-2.5 bg-indigo-500/20 border border-indigo-500/30 rounded-2xl shrink-0">
+                        <span className="text-lg select-none animate-spin" style={{ display: "inline-block" }}>⏳</span>
+                      </div>
+                      <div>
+                        <div className="text-[10px] uppercase font-black tracking-widest text-indigo-500 dark:text-indigo-400 mb-0.5">Join Request Sent</div>
+                        <div className="text-sm font-black text-slate-800 dark:text-white">Waiting for admin approval to join <span className="text-indigo-500 dark:text-indigo-400">{activeRoomName}</span></div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
+                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                          You can preview the room while waiting…
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 z-10 shrink-0">
+                      <button
+                        onClick={async () => {
+                          if (!activeRoomId || !userUid) return;
+                          try {
+                            await deleteDoc(doc(db, "rooms", activeRoomId, "joinRequests", userUid));
+                          } catch { /* ignore */ }
+                          leaveRoom();
+                          setMembers([]);
+                          setMessages([]);
+                          setSelectedMember(null);
+                          setIsSpectating(false);
+                          setJoinRequestStatus(null);
+                          setShowLobby(true);
+                        }}
+                        className="flex items-center gap-1.5 px-4 py-2.5 bg-white/60 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-2xl text-xs font-bold cursor-pointer transition-all hover:bg-white dark:hover:bg-slate-900"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        Cancel Request
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {/* ---- REJECTED STATE ---- */}
+                {joinRequestStatus === "rejected" && (
+                  <>
+                    <div className="flex items-center gap-3 z-10">
+                      <div className="p-2.5 bg-rose-500/20 border border-rose-500/30 rounded-2xl shrink-0">
+                        <span className="text-lg select-none">❌</span>
+                      </div>
+                      <div>
+                        <div className="text-[10px] uppercase font-black tracking-widest text-rose-500 dark:text-rose-400 mb-0.5">Request Declined</div>
+                        <div className="text-sm font-black text-slate-800 dark:text-white">Your request to join <span className="text-rose-500 dark:text-rose-400">{activeRoomName}</span> was declined by the admin.</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 z-10 shrink-0">
+                      <button
+                        onClick={async () => {
+                          if (activeRoomId && userUid) {
+                            await deleteDoc(doc(db, "rooms", activeRoomId, "joinRequests", userUid)).catch(console.error);
+                          }
+                          leaveRoom();
+                          setMembers([]);
+                          setMessages([]);
+                          setSelectedMember(null);
+                          setIsSpectating(false);
+                          setJoinRequestStatus(null);
+                          setShowLobby(true);
+                        }}
+                        className="flex items-center gap-1.5 px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-2xl text-xs font-black cursor-pointer transition-all shadow-lg shadow-rose-500/20"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        Back to Lobby
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {/* ---- PREVIEW STATE (null) ---- */}
+                {joinRequestStatus === null && (
+                  <>
+                    <div className="flex items-center gap-3 z-10">
+                      <div className="p-2.5 bg-amber-500/20 border border-amber-500/30 rounded-2xl shrink-0">
+                        <span className="text-lg select-none">👁️</span>
+                      </div>
+                      <div>
+                        <div className="text-[10px] uppercase font-black tracking-widest text-amber-600 dark:text-amber-400 mb-0.5">Spectator Mode</div>
+                        <div className="text-sm font-black text-slate-800 dark:text-white">You're previewing <span className="text-amber-600 dark:text-amber-400">{activeRoomName}</span></div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Send a join request — the admin will let you in.</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 z-10 shrink-0">
+                      <button
+                        onClick={() => {
+                          leaveRoom();
+                          setMembers([]);
+                          setMessages([]);
+                          setSelectedMember(null);
+                          setIsSpectating(false);
+                          setJoinRequestStatus(null);
+                          setShowLobby(true);
+                        }}
+                        className="flex items-center gap-1.5 px-4 py-2.5 bg-white/60 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-2xl text-xs font-bold cursor-pointer transition-all hover:bg-white dark:hover:bg-slate-900"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        Back
+                      </button>
+                      <button
+                        disabled={spectatingLoading}
+                        onClick={async () => {
+                          if (!activeRoomId || !userUid) return;
+                          setSpectatingLoading(true);
+                          try {
+                            await setDoc(doc(db, "rooms", activeRoomId, "joinRequests", userUid), {
+                              userId: userUid,
+                              name: user.name,
+                              avatar: user.avatar || "",
+                              requestedAt: Date.now(),
+                              status: "pending"
+                            });
+                            setJoinRequestStatus("pending");
+                          } catch (err) {
+                            console.error("Error sending join request:", err);
+                          } finally {
+                            setSpectatingLoading(false);
+                          }
+                        }}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-white rounded-2xl text-xs font-black shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 transition-all active:scale-95 cursor-pointer disabled:opacity-60"
+                      >
+                        <Users className="w-4 h-4" />
+                        {spectatingLoading ? "Sending..." : "Request to Join"}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </motion.div>
+            )}
+
+            {/* ---- Admin: Join Requests Panel ---- */}
+            {!isSpectating && roomDetails?.createdBy === userUid && pendingRequests.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.97 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="relative rounded-3xl border border-violet-500/30 bg-gradient-to-r from-violet-500/10 via-purple-500/5 to-violet-500/10 dark:from-violet-500/15 dark:via-purple-500/10 dark:to-violet-500/15 overflow-hidden shadow-xl shadow-violet-500/5"
+              >
+                {/* Header row */}
+                <button
+                  onClick={() => setShowRequestsPanel(!showRequestsPanel)}
+                  className="w-full flex items-center justify-between px-5 py-3.5 cursor-pointer group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <div className="p-2 bg-violet-500/20 border border-violet-500/30 rounded-xl">
+                        <Users className="w-4 h-4 text-violet-500 dark:text-violet-400" />
+                      </div>
+                      <span className="absolute -top-1.5 -right-1.5 w-4.5 h-4.5 min-w-[18px] px-1 bg-violet-600 text-white text-[8px] font-black rounded-full flex items-center justify-center">
+                        {pendingRequests.length}
+                      </span>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase font-black tracking-widest text-violet-600 dark:text-violet-400">Admin Action Required</div>
+                      <div className="text-sm font-black text-slate-800 dark:text-white">
+                        {pendingRequests.length} scholar{pendingRequests.length > 1 ? "s are" : " is"} requesting to join
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-[10px] uppercase font-black tracking-widest text-amber-600 dark:text-amber-400 mb-0.5">Spectator Mode</div>
-                    <div className="text-sm font-black text-slate-800 dark:text-white">You're previewing <span className="text-amber-600 dark:text-amber-400">{activeRoomName}</span></div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Join the room to chat, use the timer, and interact with scholars.</div>
+                  <div className="text-slate-400 group-hover:text-violet-500 transition-colors">
+                    {showRequestsPanel
+                      ? <span className="text-[10px] font-bold">▲ Hide</span>
+                      : <span className="text-[10px] font-bold">▼ Review</span>}
                   </div>
-                </div>
-                <div className="flex items-center gap-2 z-10 shrink-0">
-                  <button
-                    onClick={() => {
-                      leaveRoom();
-                      setMembers([]);
-                      setMessages([]);
-                      setSelectedMember(null);
-                      setIsSpectating(false);
-                      setShowLobby(true);
-                    }}
-                    className="flex items-center gap-1.5 px-4 py-2.5 bg-white/60 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-2xl text-xs font-bold cursor-pointer transition-all hover:bg-white dark:hover:bg-slate-900"
-                  >
-                    <LogOut className="w-3.5 h-3.5" />
-                    Back
-                  </button>
-                  <button
-                    disabled={spectatingLoading}
-                    onClick={async () => {
-                      if (!activeRoomId) return;
-                      setSpectatingLoading(true);
-                      try {
-                        await addDoc(collection(db, "rooms", activeRoomId, "messages"), {
-                          type: "system",
-                          text: `👋 ${user.name} joined the room.`,
-                          timestamp: Date.now()
-                        });
-                        setIsSpectating(false);
-                      } catch (err) {
-                        console.error("Error joining room from spectator:", err);
-                      } finally {
-                        setSpectatingLoading(false);
-                      }
-                    }}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-white rounded-2xl text-xs font-black shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 transition-all active:scale-95 cursor-pointer disabled:opacity-60"
-                  >
-                    <Users className="w-4 h-4" />
-                    {spectatingLoading ? "Joining..." : "Join Room"}
-                  </button>
-                </div>
+                </button>
+
+                {/* Requests list */}
+                {showRequestsPanel && (
+                  <div className="border-t border-violet-500/20 px-5 py-3 space-y-2.5">
+                    {pendingRequests.map((req) => (
+                      <div
+                        key={req.userId}
+                        className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-white/70 dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-800"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <img
+                            src={req.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${req.userId}`}
+                            alt={req.name}
+                            className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 object-cover shrink-0"
+                          />
+                          <div className="min-w-0">
+                            <span className="font-extrabold text-sm text-slate-800 dark:text-slate-100 block truncate">{req.name}</span>
+                            <span className="text-[9px] text-slate-500 dark:text-slate-400 font-bold">
+                              Requested {new Date(req.requestedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => handleRejectRequest(req)}
+                            className="px-3 py-1.5 rounded-xl text-[10px] font-black bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-rose-500/10 hover:border-rose-500/30 hover:text-rose-600 dark:hover:text-rose-400 transition-all cursor-pointer"
+                          >
+                            Decline
+                          </button>
+                          <button
+                            onClick={() => handleAcceptRequest(req)}
+                            className="px-4 py-1.5 rounded-xl text-[10px] font-black bg-violet-600 hover:bg-violet-500 text-white shadow-md shadow-violet-600/20 transition-all cursor-pointer active:scale-95"
+                          >
+                            ✓ Accept
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </motion.div>
             )}
 

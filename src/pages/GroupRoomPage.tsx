@@ -61,6 +61,9 @@ export const GroupRoomPage: React.FC = () => {
   const [lobbyError, setLobbyError] = useState("");
   const [lobbyLoading, setLobbyLoading] = useState(false);
 
+  // Always show lobby first on page load; set false to enter room view
+  const [showLobby, setShowLobby] = useState(true);
+
   // Card Expansion States
   const [scholarsExpanded, setScholarsExpanded] = useState(false);
   const [leaderboardExpanded, setLeaderboardExpanded] = useState(false);
@@ -124,6 +127,7 @@ export const GroupRoomPage: React.FC = () => {
         text: `🎉 Room "${roomNameInput.trim()}" created! Welcome scholars.`,
         timestamp: Date.now()
       });
+      setShowLobby(false);
     } catch (err: any) {
       setLobbyError(err.message || "Failed to create study room.");
     } finally {
@@ -145,6 +149,7 @@ export const GroupRoomPage: React.FC = () => {
         text: `👋 ${user.name} joined the room.`,
         timestamp: Date.now()
       });
+      setShowLobby(false);
     } catch (err: any) {
       setLobbyError(err.message || "Failed to join study room. Please check the code.");
     } finally {
@@ -172,6 +177,7 @@ export const GroupRoomPage: React.FC = () => {
         setMembers([]);
         setMessages([]);
         setSelectedMember(null);
+        setShowLobby(true);
       } catch (err) {
         console.error("Error leaving room:", err);
       }
@@ -208,6 +214,7 @@ export const GroupRoomPage: React.FC = () => {
         setMembers([]);
         setMessages([]);
         setSelectedMember(null);
+        setShowLobby(true);
       } catch (err) {
         console.error("Error deleting room:", err);
       }
@@ -217,6 +224,11 @@ export const GroupRoomPage: React.FC = () => {
   // ----------------------------------------------------
   // Room Subscriptions (Real-time Firestore)
   // ----------------------------------------------------
+  // Scroll to top on mount and whenever the active room changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [activeRoomId]);
+
   // Listen for all available study rooms (Lobby Screen)
   useEffect(() => {
     if (activeRoomId) return;
@@ -671,7 +683,7 @@ export const GroupRoomPage: React.FC = () => {
       />
 
       <AnimatePresence mode="wait">
-        {!activeRoomId ? (
+        {!activeRoomId || showLobby ? (
           // ================= LOBBY SCREEN =================
           <motion.div
             key="lobby"
@@ -700,6 +712,34 @@ export const GroupRoomPage: React.FC = () => {
               <div className="mb-6 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-455 text-xs font-semibold text-center">
                 {lobbyError}
               </div>
+            )}
+
+            {/* Resume Session Banner – shown when user is already in a room */}
+            {activeRoomId && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-8 relative overflow-hidden rounded-3xl border border-indigo-500/30 bg-gradient-to-r from-indigo-600/10 via-purple-600/5 to-indigo-600/10 dark:from-indigo-500/15 dark:via-purple-500/10 dark:to-indigo-500/15 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl shadow-indigo-500/5"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-purple-500/5 animate-pulse pointer-events-none" />
+                <div className="flex items-center gap-3 z-10">
+                  <div className="p-2.5 bg-indigo-500/20 border border-indigo-500/30 rounded-2xl shrink-0">
+                    <Users className="w-5 h-5 text-indigo-500 dark:text-indigo-400 animate-pulse" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase font-black tracking-widest text-indigo-500 dark:text-indigo-400 mb-0.5">Active Session</div>
+                    <div className="text-sm font-black text-slate-800 dark:text-white">{activeRoomName}</div>
+                    <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">Room: {activeRoomId}</div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowLobby(false)}
+                  className="z-10 shrink-0 flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-xs font-black shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all active:scale-95 cursor-pointer"
+                >
+                  <Rocket className="w-4 h-4" />
+                  Resume Session
+                </button>
+              </motion.div>
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">

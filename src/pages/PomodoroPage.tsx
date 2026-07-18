@@ -1,6 +1,7 @@
 // src/pages/PomodoroPage.tsx
 import React, { useState, useEffect, useRef } from "react";
 import { useStore } from "../store/store";
+import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { db } from "../firebase";
 import { doc, setDoc, addDoc, collection, query, orderBy, limit, onSnapshot, deleteDoc, getDocs } from "firebase/firestore";
@@ -15,7 +16,8 @@ import {
   Minimize2,
   CheckSquare,
   RotateCcw,
-  Coffee
+  Coffee,
+  Users
 } from "lucide-react";
 
 // Subcomponent Imports
@@ -1223,6 +1225,14 @@ const PomodoroPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          <Link
+            to="/rooms"
+            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black shadow-md shadow-indigo-500/20 hover:shadow-indigo-500/30 transition-all cursor-pointer"
+            title="Go to Group Study Rooms"
+          >
+            <Users className="h-4 w-4" />
+            <span className="hidden sm:inline">Group Study Rooms</span>
+          </Link>
           <button
             onClick={() => setShowConfig(!showConfig)}
             className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"

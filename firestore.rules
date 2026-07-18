@@ -126,6 +126,19 @@ service cloud.firestore {
         allow write: if request.auth != null && request.auth.uid == memberId;
       }
 
+      // Join Requests subcollection
+      match /joinRequests/{requestId} {
+        allow read: if request.auth != null && (
+          request.auth.uid == requestId ||
+          get(/databases/$(database)/documents/rooms/$(roomId)).data.createdBy == request.auth.uid
+        );
+        allow create: if request.auth != null && request.auth.uid == requestId;
+        allow update, delete: if request.auth != null && (
+          request.auth.uid == requestId ||
+          get(/databases/$(database)/documents/rooms/$(roomId)).data.createdBy == request.auth.uid
+        );
+      }
+
       // Cheers sent in the room
       match /cheers/{cheerId} {
         allow read, create, delete: if request.auth != null;

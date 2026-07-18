@@ -867,13 +867,22 @@ export const GroupRoomPage: React.FC = () => {
                     <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">Room: {activeRoomId}</div>
                   </div>
                 </div>
-                <button
-                  onClick={() => setShowLobby(false)}
-                  className="z-10 shrink-0 flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-xs font-black shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all active:scale-95 cursor-pointer"
-                >
-                  <Rocket className="w-4 h-4" />
-                  Resume Session
-                </button>
+                <div className="flex items-center gap-2 z-10 shrink-0">
+                  <button
+                    onClick={handleLeaveRoom}
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-455 border border-rose-500/20 rounded-2xl text-xs font-bold cursor-pointer transition-all active:scale-95"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Leave Room</span>
+                  </button>
+                  <button
+                    onClick={() => setShowLobby(false)}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-xs font-black shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all active:scale-95 cursor-pointer"
+                  >
+                    <Rocket className="w-4 h-4" />
+                    Resume Session
+                  </button>
+                </div>
               </motion.div>
             )}
 

@@ -9,6 +9,7 @@ import {
   addDoc,
   deleteDoc,
   setDoc,
+  getDoc,
   query,
   orderBy,
   where,
@@ -156,20 +157,40 @@ export const GroupRoomPage: React.FC = () => {
     setLobbyError("");
     try {
       const code = roomCodeInput.trim().toUpperCase();
+
+      // Peek at the room doc to check if current user is the creator
+      const roomSnap = await getDoc(doc(db, "rooms", code));
+      if (!roomSnap.exists()) throw new Error("Room not found. Please check the code.");
+      const roomData = roomSnap.data();
+      const isCreator = roomData.createdBy === userUid;
+
       await joinRoom(code);
-      // Send a join request — admin must approve
-      await setDoc(doc(db, "rooms", code, "joinRequests", userUid!), {
-        userId: userUid,
-        name: user.name,
-        avatar: user.avatar || "",
-        requestedAt: Date.now(),
-        status: "pending"
-      });
-      setJoinRequestStatus("pending");
-      setIsSpectating(true);
-      setShowLobby(false);
+
+      if (isCreator) {
+        // Admin rejoining their own room — direct entry, no request needed
+        await addDoc(collection(db, "rooms", code, "messages"), {
+          type: "system",
+          text: `👑 ${user.name} (host) rejoined the room.`,
+          timestamp: Date.now()
+        });
+        setIsSpectating(false);
+        setJoinRequestStatus(null);
+        setShowLobby(false);
+      } else {
+        // Regular user — send a join request; admin must approve
+        await setDoc(doc(db, "rooms", code, "joinRequests", userUid!), {
+          userId: userUid,
+          name: user.name,
+          avatar: user.avatar || "",
+          requestedAt: Date.now(),
+          status: "pending"
+        });
+        setJoinRequestStatus("pending");
+        setIsSpectating(true);
+        setShowLobby(false);
+      }
     } catch (err: any) {
-      setLobbyError(err.message || "Failed to send join request. Please check the code.");
+      setLobbyError(err.message || "Failed to join study room. Please check the code.");
     } finally {
       setLobbyLoading(false);
     }
@@ -342,9 +363,11 @@ export const GroupRoomPage: React.FC = () => {
   }, [activeRoomId, userUid]);
 
   // Admin: Listen for pending join requests in real time
+  // Dep uses roomDetails?.createdBy (a string) so the listener is only
+  // recreated when the creator field actually changes, not on every room-doc update.
   useEffect(() => {
-    if (!activeRoomId || !userUid || !roomDetails) return;
-    if (roomDetails.createdBy !== userUid) return; // only admin
+    const createdBy = roomDetails?.createdBy;
+    if (!activeRoomId || !userUid || !createdBy || createdBy !== userUid) return;
 
     const q = query(
       collection(db, "rooms", activeRoomId, "joinRequests"),
@@ -357,7 +380,7 @@ export const GroupRoomPage: React.FC = () => {
       if (list.length > 0) setShowRequestsPanel(true);
     });
     return unsub;
-  }, [activeRoomId, userUid, roomDetails]);
+  }, [activeRoomId, userUid, roomDetails?.createdBy]);
 
   // Requester: Watch own join-request doc for admin decision
   useEffect(() => {
@@ -933,7 +956,8 @@ export const GroupRoomPage: React.FC = () => {
                           </div>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
-                          {/* Preview button */}
+                          {/* Preview button — visible only for non-creator */}
+                          {room.createdBy !== userUid && (
                           <button
                             type="button"
                             disabled={lobbyLoading}
@@ -945,6 +969,7 @@ export const GroupRoomPage: React.FC = () => {
                                 // Preview only — do NOT write member doc or post system message
                                 await joinRoom(room.roomId);
                                 setIsSpectating(true);
+                                setJoinRequestStatus(null);
                                 setShowLobby(false);
                               } catch (err: any) {
                                 setLobbyError(err.message || "Failed to load room.");
@@ -956,7 +981,9 @@ export const GroupRoomPage: React.FC = () => {
                           >
                             Preview
                           </button>
-                          {/* Join button → sends a join request to the admin */}
+                          )}
+
+                          {/* Main action button: Rejoin (creator) or Request (others) */}
                           <button
                             type="button"
                             disabled={lobbyLoading}
@@ -964,28 +991,45 @@ export const GroupRoomPage: React.FC = () => {
                               if (lobbyLoading) return;
                               setLobbyLoading(true);
                               setLobbyError("");
+                              const isCreator = room.createdBy === userUid;
                               try {
                                 await joinRoom(room.roomId);
-                                // Send join request — admin must approve
-                                await setDoc(doc(db, "rooms", room.roomId, "joinRequests", userUid!), {
-                                  userId: userUid,
-                                  name: user.name,
-                                  avatar: user.avatar || "",
-                                  requestedAt: Date.now(),
-                                  status: "pending"
-                                });
-                                setJoinRequestStatus("pending");
-                                setIsSpectating(true);
-                                setShowLobby(false);
+                                if (isCreator) {
+                                  // Admin rejoining their own room — direct, no request
+                                  await addDoc(collection(db, "rooms", room.roomId, "messages"), {
+                                    type: "system",
+                                    text: `👑 ${user.name} (host) rejoined the room.`,
+                                    timestamp: Date.now()
+                                  });
+                                  setIsSpectating(false);
+                                  setJoinRequestStatus(null);
+                                  setShowLobby(false);
+                                } else {
+                                  // Regular user — send join request; admin must approve
+                                  await setDoc(doc(db, "rooms", room.roomId, "joinRequests", userUid!), {
+                                    userId: userUid,
+                                    name: user.name,
+                                    avatar: user.avatar || "",
+                                    requestedAt: Date.now(),
+                                    status: "pending"
+                                  });
+                                  setJoinRequestStatus("pending");
+                                  setIsSpectating(true);
+                                  setShowLobby(false);
+                                }
                               } catch (err: any) {
-                                setLobbyError(err.message || "Failed to send join request.");
+                                setLobbyError(err.message || "Failed to join room.");
                               } finally {
                                 setLobbyLoading(false);
                               }
                             }}
-                            className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-[10px] font-black shadow-sm transition-all duration-200"
+                            className={`px-3 py-2 rounded-xl text-[10px] font-black shadow-sm transition-all duration-200 ${
+                              room.createdBy === userUid
+                                ? "bg-emerald-600 hover:bg-emerald-500 text-white"
+                                : "bg-indigo-600 hover:bg-indigo-500 text-white"
+                            }`}
                           >
-                            Request
+                            {room.createdBy === userUid ? "👑 Rejoin" : "Request"}
                           </button>
                         </div>
                       </div>

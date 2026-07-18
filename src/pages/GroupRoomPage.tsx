@@ -32,7 +32,8 @@ import {
   PlusCircle,
   Edit3,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Trash2
 } from "lucide-react";
 import { CheerOverlays } from "../components/pomodoro/CheerOverlays";
 import type { CheerEvent } from "../components/pomodoro/CheerOverlays";
@@ -177,6 +178,42 @@ export const GroupRoomPage: React.FC = () => {
     }
   };
 
+  const handleDeleteRoom = async () => {
+    if (!activeRoomId) return;
+    if (confirm("Are you sure you want to permanently delete this study room? All members will be disconnected.")) {
+      try {
+        // 1. Delete members subcollection docs
+        const membersSnap = await getDocs(collection(db, "rooms", activeRoomId, "members"));
+        for (const memberDoc of membersSnap.docs) {
+          await deleteDoc(doc(db, "rooms", activeRoomId, "members", memberDoc.id));
+        }
+
+        // 2. Delete messages subcollection docs
+        const messagesSnap = await getDocs(collection(db, "rooms", activeRoomId, "messages"));
+        for (const msgDoc of messagesSnap.docs) {
+          await deleteDoc(doc(db, "rooms", activeRoomId, "messages", msgDoc.id));
+        }
+
+        // 3. Delete cheers subcollection docs
+        const cheersSnap = await getDocs(collection(db, "rooms", activeRoomId, "cheers"));
+        for (const cheerDoc of cheersSnap.docs) {
+          await deleteDoc(doc(db, "rooms", activeRoomId, "cheers", cheerDoc.id));
+        }
+
+        // 4. Delete the root room document
+        await deleteDoc(doc(db, "rooms", activeRoomId));
+
+        // 5. Leave the room locally in store
+        await leaveRoom();
+        setMembers([]);
+        setMessages([]);
+        setSelectedMember(null);
+      } catch (err) {
+        console.error("Error deleting room:", err);
+      }
+    }
+  };
+
   // ----------------------------------------------------
   // Room Subscriptions (Real-time Firestore)
   // ----------------------------------------------------
@@ -214,6 +251,13 @@ export const GroupRoomPage: React.FC = () => {
         });
         // Sync active room name with Zustand
         useStore.setState({ activeRoomName: data.name });
+      } else {
+        // Room was deleted by the creator/admin!
+        leaveRoom();
+        setMembers([]);
+        setMessages([]);
+        setSelectedMember(null);
+        alert("This study room has been deleted by the host.");
       }
     });
 
@@ -871,13 +915,24 @@ export const GroupRoomPage: React.FC = () => {
                 </div>
               </div>
 
-              <button
-                onClick={handleLeaveRoom}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 rounded-2xl text-xs font-bold cursor-pointer transition-all active:scale-95 self-start md:self-center"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Leave Room</span>
-              </button>
+              <div className="flex items-center gap-3 self-start md:self-center">
+                {roomDetails?.createdBy === userUid && (
+                  <button
+                    onClick={handleDeleteRoom}
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-2xl text-xs font-black cursor-pointer transition-all active:scale-95 shadow-md shadow-red-600/10 hover:shadow-red-600/20"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Delete Room</span>
+                  </button>
+                )}
+                <button
+                  onClick={handleLeaveRoom}
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 rounded-2xl text-xs font-bold cursor-pointer transition-all active:scale-95"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Leave Room</span>
+                </button>
+              </div>
             </div>
 
             {/* Row 1: Scholars Online, Room Leaderboard, and Task Inspector */}

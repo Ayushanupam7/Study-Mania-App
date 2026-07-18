@@ -36,7 +36,8 @@ import {
   Edit3,
   ChevronDown,
   ChevronUp,
-  Trash2
+  Trash2,
+  ArrowLeft
 } from "lucide-react";
 import { CheerOverlays } from "../components/pomodoro/CheerOverlays";
 import type { CheerEvent } from "../components/pomodoro/CheerOverlays";
@@ -217,6 +218,20 @@ export const GroupRoomPage: React.FC = () => {
       } catch (err) {
         console.error("Error leaving room:", err);
       }
+    }
+  };
+
+  const handleBackToLobby = () => {
+    if (isSpectating) {
+      leaveRoom();
+      setMembers([]);
+      setMessages([]);
+      setSelectedMember(null);
+      setIsSpectating(false);
+      setJoinRequestStatus(null);
+      setShowLobby(true);
+    } else {
+      setShowLobby(true);
     }
   };
 
@@ -1292,6 +1307,14 @@ export const GroupRoomPage: React.FC = () => {
             {/* Header / Room Topbar */}
             <div className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-white/85 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-3xl gap-4 shadow-lg backdrop-blur-md text-slate-800 dark:text-slate-100">
               <div className="flex items-center gap-3">
+                {/* Back Button */}
+                <button
+                  onClick={handleBackToLobby}
+                  className="p-2.5 bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-350 rounded-2xl transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95 shrink-0"
+                  title="Back to Lobby"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
                 <div className="p-2.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-2xl border border-indigo-500/20">
                   <Users className="w-6 h-6 animate-pulse" />
                 </div>
